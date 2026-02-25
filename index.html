@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Firebase Realtime Gantt Demo</title>
+  <style>
+    :root { --bg:#0b1020; --card:#121a33; --muted:#93a4c7; --text:#e9eeff; --line:#243055; --bar:#4f7cff; --bar2:#27c5a0; }
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial; background:var(--bg); color:var(--text); }
+    .wrap{ max-width:1200px; margin:24px auto; padding:0 16px; }
+    h1{ font-size:20px; margin:0 0 12px; }
+    .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    .card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; }
+    .meta{ color:var(--muted); font-size:12px; }
+    input, select, button{
+      background:#0e1530; color:var(--text); border:1px solid var(--line);
+      border-radius:10px; padding:10px 10px; font-size:14px; outline:none;
+    }
+    input:focus, select:focus{ border-color:#3b58a5; }
+    button{ cursor:pointer; }
+    button.primary{ background:linear-gradient(180deg,#4f7cff,#2c5dff); border:none; }
+    button.danger{ background:#2a1230; border-color:#5a1f66; }
+    .grid{
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      gap:12px;
+      margin-top:12px;
+    }
+
+    /* table */
+    table{ width:100%; border-collapse:collapse; }
+    th, td{ border-bottom:1px solid var(--line); padding:10px 8px; vertical-align:middle; }
+    th{ color:var(--muted); font-weight:600; text-align:left; font-size:12px; }
+    td small{ color:var(--muted); }
+    .pill{ font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); display:inline-block; }
+
+    /* gantt */
+    .gantt{ overflow:auto; }
+    .ganttHeader{
+      position:sticky; top:0; background:var(--card); z-index:3;
+      border-bottom:1px solid var(--line);
+    }
+    .timeline{
+      position:relative;
+      min-width:900px;
+    }
+    .ticks{ display:flex; }
+    .tick{
+      flex:1; min-width:32px;
+      border-right:1px dashed rgba(255,255,255,0.08);
+      padding:8px 6px;
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .lane{
+      position:relative;
+      height:40px;
+      border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+    .bar{
+      position:absolute;
+      top:8px; height:24px;
+      border-radius:10px;
+      background:var(--bar);
+      box-shadow:0 6px 18px rgba(79,124,255,0.18);
+      display:flex; align-items:center;
+      padding:0 10px;
+      font-size:12px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .bar.done{ background:var(--bar2); box-shadow:0 6px 18px rgba(39,197,160,0.18); }
+    .toast{ margin-top:10px; color:var(--muted); font-size:12px; }
+    .split{ display:flex; gap:10px; flex-wrap:wrap; }
+    .split > * { flex:1; min-width:160px; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="row">
+      <h1>Firebase Realtime 甘特圖 Demo</h1>
+      <div class="meta">多人同步、即時更新、單檔 HTML。資料存 Firestore /tasks。</div>
+    </div>
+
+    <div class="grid">
+      <!-- Left: editor -->
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div class="meta">連線狀態</div>
+            <div id="status" class="mono">initializing…</div>
+          </div>
+          <button id="seedBtn" class="danger" title="建立示範資料（若 tasks 空的）">Seed Demo Data</button>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--line); margin:12px 0;" />
+
+        <div class="meta">新增任務</div>
+        <div class="split" style="margin-top:8px;">
+          <input id="newTitle" placeholder="任務名稱，例如：上線測試" />
+          <input id="newOwner" placeholder="Owner，例如：Jimmy" />
+          <select id="newStatus">
+            <option value="todo">todo</option>
+            <option value="doing">doing</option>
+            <option value="done">done</option>
+          </select>
+        </div>
+        <div class="split" style="margin-top:8px;">
+          <input id="newStart" type="date" />
+          <input id="newEnd" type="date" />
+          <button id="addBtn" class="primary">新增</button>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--line); margin:12px 0;" />
+
+        <div class="meta">任務清單（可直接改，會自動儲存）</div>
+        <div style="max-height:520px; overflow:auto; margin-top:6px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Owner</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="taskRows"></tbody>
+          </table>
+        </div>
+
+        <div class="toast" id="hint"></div>
+      </div>
+
+      <!-- Right: gantt -->
+      <div class="card gantt">
+        <div class="ganttHeader">
+          <div class="row" style="padding:10px 10px 6px; align-items:flex-end;">
+            <div>
+              <div class="meta">甘特圖時間窗</div>
+              <div class="row">
+                <span class="pill">最近 30 天（含未來）</span>
+                <span class="pill" id="rangeLabel">—</span>
+              </div>
+            </div>
+            <div style="flex:1"></div>
+            <div class="meta">提示：此 Demo 用 onSnapshot 即時同步（不是輪詢）</div>
+          </div>
+          <div class="timeline" id="ticks"></div>
+        </div>
+        <div class="timeline" id="lanes"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // === 1) 把下面 firebaseConfig 換成你 Firebase 專案的設定 ===
+const firebaseConfig = {
+  apiKey: "AIzaSyBnopz0NQayYvIamipDQ5wLS5sV1UCkV64",
+  authDomain: "gantt-shopee.firebaseapp.com",
+  projectId: "gantt-shopee",
+  storageBucket: "gantt-shopee.firebasestorage.app",
+  messagingSenderId: "464735306485",
+  appId: "1:464735306485:web:091e124256d581a1f37bbc",
+  measurementId: "G-YJ0G7SGZH8"
+};
+
+    // Firebase modular SDK (CDN)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import {
+      getFirestore, collection, doc, addDoc, updateDoc, deleteDoc,
+      onSnapshot, serverTimestamp, query, orderBy, getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import {
+      getAuth, signInAnonymously, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+
+    // === helpers ===
+    const $ = (id) => document.getElementById(id);
+    const fmt = (d) => new Date(d).toISOString().slice(0,10);
+    const clamp = (x,min,max) => Math.max(min, Math.min(max, x));
+    const dayMs = 24*60*60*1000;
+
+    function startOfDay(ts){ const d = new Date(ts); d.setHours(0,0,0,0); return d.getTime(); }
+    function addDays(ts, days){ return ts + days*dayMs; }
+    function daysBetween(a,b){ return Math.round((startOfDay(b)-startOfDay(a))/dayMs); }
+
+    // simple debounce per doc-id
+    const debouncers = new Map();
+    function debounceByKey(key, fn, wait=450){
+      if (debouncers.has(key)) clearTimeout(debouncers.get(key));
+      debouncers.set(key, setTimeout(fn, wait));
+    }
+
+    // === 2) init ===
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const tasksCol = collection(db, "tasks");
+
+    $("status").textContent = "signing in…";
+
+    await signInAnonymously(auth).catch(err=>{
+      console.error(err);
+      $("status").textContent = "auth error: " + err.message;
+    });
+
+    onAuthStateChanged(auth, (user)=>{
+      if(!user) return;
+      $("status").textContent = `connected as uid=${user.uid}`;
+      $("hint").textContent = "開兩個瀏覽器或兩個人同時開，改任務會即時同步。";
+    });
+
+    // === 3) UI actions ===
+    $("addBtn").addEventListener("click", async ()=>{
+      const title = $("newTitle").value.trim();
+      const owner = $("newOwner").value.trim();
+      const status = $("newStatus").value;
+      const start = $("newStart").value;
+      const end = $("newEnd").value;
+
+      if(!title || !start || !end){
+        alert("請至少填：Title / Start / End");
+        return;
+      }
+      if(end < start){
+        alert("End 不能早於 Start");
+        return;
+      }
+
+      await addDoc(tasksCol, {
+        title, owner, status,
+        start, end,
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp()
+      });
+
+      $("newTitle").value = "";
+      $("newOwner").value = "";
+    });
+
+    $("seedBtn").addEventListener("click", async ()=>{
+      const snap = await getDocs(tasksCol);
+      if(!snap.empty){
+        alert("tasks 已經有資料了（不重複建立）。");
+        return;
+      }
+      const today = startOfDay(Date.now());
+      const demo = [
+        { title:"需求確認", owner:"Jimmy", status:"done",  start: fmt(addDays(today,-10)), end: fmt(addDays(today,-6)) },
+        { title:"UI/互動稿", owner:"Amy",   status:"doing", start: fmt(addDays(today,-6)),  end: fmt(addDays(today, 2)) },
+        { title:"開發",     owner:"Ben",   status:"doing", start: fmt(addDays(today,-2)),  end: fmt(addDays(today, 8)) },
+        { title:"測試",     owner:"QA",    status:"todo",  start: fmt(addDays(today, 6)),  end: fmt(addDays(today,12)) },
+        { title:"上線",     owner:"Ops",   status:"todo",  start: fmt(addDays(today,12)),  end: fmt(addDays(today,13)) },
+      ];
+      for(const t of demo){
+        await addDoc(tasksCol, { ...t, updatedAt: serverTimestamp(), createdAt: serverTimestamp() });
+      }
+      alert("已建立示範資料！");
+    });
+
+    // === 4) realtime listener ===
+    const q = query(tasksCol, orderBy("start", "asc"));
+    onSnapshot(q, (snap)=>{
+      const tasks = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      renderTable(tasks);
+      renderGantt(tasks);
+    }, (err)=>{
+      console.error(err);
+      $("status").textContent = "firestore error: " + err.message;
+    });
+
+    function renderTable(tasks){
+      const tbody = $("taskRows");
+      tbody.innerHTML = "";
+
+      for(const t of tasks){
+        const tr = document.createElement("tr");
+
+        const title = document.createElement("td");
+        const titleIn = document.createElement("input");
+        titleIn.value = t.title ?? "";
+        titleIn.style.width = "100%";
+        titleIn.addEventListener("input", ()=>{
+          debounceByKey("title:"+t.id, ()=>updateDoc(doc(db,"tasks",t.id), { title: titleIn.value.trim(), updatedAt: serverTimestamp() }));
+        });
+        title.appendChild(titleIn);
+
+        const start = document.createElement("td");
+        const startIn = document.createElement("input");
+        startIn.type = "date";
+        startIn.value = t.start ?? "";
+        startIn.addEventListener("change", ()=>{
+          const v = startIn.value;
+          const endV = endIn.value;
+          if(endV && v && endV < v){ alert("End 不能早於 Start"); startIn.value = t.start ?? ""; return; }
+          updateDoc(doc(db,"tasks",t.id), { start: v, updatedAt: serverTimestamp() });
+        });
+        start.appendChild(startIn);
+
+        const end = document.createElement("td");
+        const endIn = document.createElement("input");
+        endIn.type = "date";
+        endIn.value = t.end ?? "";
+        endIn.addEventListener("change", ()=>{
+          const v = endIn.value;
+          const startV = startIn.value;
+          if(v && startV && v < startV){ alert("End 不能早於 Start"); endIn.value = t.end ?? ""; return; }
+          updateDoc(doc(db,"tasks",t.id), { end: v, updatedAt: serverTimestamp() });
+        });
+        end.appendChild(endIn);
+
+        const owner = document.createElement("td");
+        const ownerIn = document.createElement("input");
+        ownerIn.value = t.owner ?? "";
+        ownerIn.style.width = "100%";
+        ownerIn.addEventListener("input", ()=>{
+          debounceByKey("owner:"+t.id, ()=>updateDoc(doc(db,"tasks",t.id), { owner: ownerIn.value.trim(), updatedAt: serverTimestamp() }));
+        });
+        owner.appendChild(ownerIn);
+
+        const status = document.createElement("td");
+        const sel = document.createElement("select");
+        ["todo","doing","done"].forEach(s=>{
+          const op = document.createElement("option");
+          op.value = s; op.textContent = s;
+          if((t.status ?? "todo") === s) op.selected = true;
+          sel.appendChild(op);
+        });
+        sel.addEventListener("change", ()=>{
+          updateDoc(doc(db,"tasks",t.id), { status: sel.value, updatedAt: serverTimestamp() });
+        });
+        status.appendChild(sel);
+
+        const act = document.createElement("td");
+        const del = document.createElement("button");
+        del.textContent = "刪除";
+        del.className = "danger";
+        del.addEventListener("click", async ()=>{
+          if(confirm("確定刪除此任務？")){
+            await deleteDoc(doc(db,"tasks",t.id));
+          }
+        });
+        act.appendChild(del);
+
+        [title,start,end,owner,status,act].forEach(td=>tr.appendChild(td));
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderGantt(tasks){
+      // window: from today-14d to today+16d => 31 days
+      const today = startOfDay(Date.now());
+      const winStart = addDays(today, -14);
+      const winEnd   = addDays(today, 16);
+
+      $("rangeLabel").textContent = `${fmt(winStart)} → ${fmt(winEnd)}`;
+
+      const totalDays = daysBetween(winStart, winEnd) + 1;
+
+      // header ticks
+      const ticks = $("ticks");
+      ticks.innerHTML = "";
+      const ticksRow = document.createElement("div");
+      ticksRow.className = "ticks";
+      ticksRow.style.display = "flex";
+      ticksRow.style.minWidth = (totalDays*36) + "px";
+
+      for(let i=0;i<totalDays;i++){
+        const d = new Date(addDays(winStart,i));
+        const tick = document.createElement("div");
+        tick.className = "tick";
+        tick.style.flex = "0 0 36px";
+        tick.textContent = `${d.getMonth()+1}/${d.getDate()}`;
+        ticksRow.appendChild(tick);
+      }
+      ticks.appendChild(ticksRow);
+
+      // lanes
+      const lanes = $("lanes");
+      lanes.innerHTML = "";
+      lanes.style.minWidth = (totalDays*36) + "px";
+
+      for(const t of tasks){
+        const lane = document.createElement("div");
+        lane.className = "lane";
+
+        // background grid (optional)
+        lane.style.backgroundImage = `linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px)`;
+        lane.style.backgroundSize = "36px 100%";
+
+        // bar
+        const bar = document.createElement("div");
+        bar.className = "bar" + ((t.status==="done") ? " done" : "");
+        bar.title = `${t.title}\n${t.start} → ${t.end}\n${t.owner ?? ""} (${t.status ?? ""})`;
+
+        const s = t.start ? startOfDay(new Date(t.start).getTime()) : null;
+        const e = t.end   ? startOfDay(new Date(t.end).getTime())   : null;
+        if(!s || !e){ continue; }
+
+        // clip to window
+        const leftDays = clamp(daysBetween(winStart, s), 0, totalDays-1);
+        const rightDays = clamp(daysBetween(winStart, e), 0, totalDays-1);
+        const widthDays = Math.max(1, rightDays - leftDays + 1);
+
+        bar.style.left = (leftDays*36 + 6) + "px";
+        bar.style.width = (widthDays*36 - 12) + "px";
+        bar.textContent = `${t.title}${t.owner ? " · "+t.owner : ""}`;
+
+        lane.appendChild(bar);
+        lanes.appendChild(lane);
+      }
+    }
+  </script>
+</body>
+</html>
