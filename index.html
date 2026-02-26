@@ -323,7 +323,17 @@ position:absolute;
             <div class="cardTitle">Admin（管理）</div>
             <div class="muted" style="font-size:12px; margin-bottom:8px;">管理 editors / members / projects（顏色）</div>
 
-            <div class="row" style="margin-bottom:10px;">
+            
+            <div style="margin-bottom:12px;">
+              <div class="muted" style="font-size:12px; margin-bottom:6px;">Timeline（單位；Admin 可新增/改名/刪除）</div>
+              <div class="row" style="flex-wrap:wrap;">
+                <input id="timelineId" placeholder="timelineId（英數/ - _，例如：marketing）" style="flex:1; min-width:220px;"/>
+                <input id="timelineName" placeholder="顯示名稱（例如：Marketing）" style="flex:1; min-width:180px;"/>
+                <button id="timelineUpsert" class="btn primary">新增/更新</button>
+              </div>
+              <div id="timelineList" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;"></div>
+            </div>
+<div class="row" style="margin-bottom:10px;">
               <div class="field" style="flex:1; min-width:260px;">
                 <label>新增/更新專案（projectId = 專案名稱）</label>
                 <div class="row" style="flex-wrap:nowrap;">
@@ -374,6 +384,7 @@ position:absolute;
             <div class="cardTitle">Debug</div>
             <div class="muted" style="font-size:12px; line-height:1.5;">
               <div>projectId：<span id="dbgProjectId">-</span></div>
+              <div>timeline：<span id="dbgTimeline">-</span></div>
               <div>登入：<span id="dbgAuth">-</span></div>
               <div>tasks 讀取筆數：<span id="dbgTaskCount">-</span></div>
               <div>最後錯誤：<span id="dbgErr">-</span></div>
@@ -388,6 +399,9 @@ position:absolute;
       <div class="rightPanel">
         <div class="ganttTop">
           <div class="row" style="gap:8px; flex-wrap:wrap;">
+            <label class="muted">Timeline</label>
+            <select id="timelineSel" style="min-width:180px;"></select>
+            <span class="muted" id="timelineHint" style="font-size:12px;"></span>
             <label class="muted">時間尺度</label>
             <select id="scaleSel">
               <option value="day">天</option>
@@ -541,7 +555,8 @@ const firebaseConfig = {
   }
 
   const state = {
-    user:null, isAdmin:false, isEditor:false, canEdit:false,
+    user:null, isAdmin:false, isEditor:false, canEdit:false, timelineId:"",
+    tlReady:false,
     filterProject:"", filterAssignee:"", filterStatus:"", filterFrom:"", filterTo:"",
     scale:"day", zoom:"sm", viewStart: startOfDay(Date.now()) - 21*dayMs
   };
@@ -658,32 +673,127 @@ const firebaseConfig = {
   });
   $("todayBtn").addEventListener("click", ()=>{ state.viewStart=startOfDay(Date.now())-7*dayMs; rerender(); });
 
-  function safeSubError(prefix){ return (e)=> setError(prefix+"："+(e?.message||String(e))); }
+  $("timelineSel").addEventListener("change", ()=>{
+    const id=$("timelineSel").value;
+    if(!id) return;
+    setTimeline(id);
+  });
 
-  onSnapshot(query(collection(db,"members"), orderBy("email")), (snap)=>{
-    members=new Map();
-    snap.forEach(d=>members.set(d.id, { name:(d.data()?.name||d.id) }));
-    rebuildDropdowns(); renderAdminLists(); rerender();
-  }, safeSubError("members 訂閱失敗"));
 
-  onSnapshot(query(collection(db,"projects"), orderBy("updatedAt")), (snap)=>{
-    projects=new Set(); projectMeta=new Map();
-    snap.forEach(d=>{
-      projects.add(d.id);
-      const data=d.data()||{};
-      if(data.color) projectMeta.set(d.id, { color:data.color });
+  
+
+  // timelines (units)
+  let timelines=new Map(); // id -> {name}
+  let unsubMembers=null, unsubProjects=null, unsubTasks=null;
+
+  function tlPathCol(name){
+    if(!state.timelineId){ setError("尚未選擇 Timeline，請先建立/選擇 Timeline"); return collection(db, name); } // fallback
+    return collection(db, "timelines", state.timelineId, name);
+  }
+  function tlPathDoc(name, id){
+    if(!state.timelineId){ setError("尚未選擇 Timeline，請先建立/選擇 Timeline"); return doc(db, name, id); }
+    return doc(db, "timelines", state.timelineId, name, id);
+  }
+
+  function renderTimelineOptions(){
+    const sel=$("timelineSel"); if(!sel) return;
+    const cur=state.timelineId;
+    sel.innerHTML="";
+    const keys=[...timelines.keys()].sort((a,b)=>{
+      const an=(timelines.get(a)?.name||a).toLowerCase();
+      const bn=(timelines.get(b)?.name||b).toLowerCase();
+      return an.localeCompare(bn);
     });
-    rebuildDropdowns(); renderAdminLists(); rerender();
-  }, safeSubError("projects 訂閱失敗"));
+    if(keys.length===0){
+      const op=document.createElement("option"); op.value=""; op.textContent="（尚無 Timeline）";
+      sel.appendChild(op);
+      $("timelineHint").textContent = state.isAdmin ? "請在左側 Admin 建立 Timeline" : "請聯絡 Admin 建立 Timeline";
+      state.tlReady=false;
+      return;
+    }
+    $("timelineHint").textContent="";
+    keys.forEach(id=>{
+      const op=document.createElement("option");
+      op.value=id;
+      op.textContent = timelines.get(id)?.name ? `${timelines.get(id).name} (${id})` : id;
+      sel.appendChild(op);
+    });
+    if(cur && timelines.has(cur)) {
+      sel.value=cur;
+      if(!state.tlReady) setTimeline(cur, { silent:true });
+    } else {
+      sel.value=keys[0];
+      setTimeline(keys[0], { silent:true });
+    }
+  }
 
-  onSnapshot(query(collection(db,"tasks"), orderBy("updatedAt")), (snap)=>{
-    allTasks=snap.docs.map(d=>({ id:d.id, ...d.data() }));
-    $("dbgTaskCount").textContent=String(snap.size);
-    setStatus(`已連線｜tasks=${snap.size}`);
-    rerender();
-  }, safeSubError("tasks 訂閱失敗"));
+  function renderTimelineAdminList(){
+    const list=$("timelineList"); if(!list) return;
+    list.innerHTML="";
+    const keys=[...timelines.keys()].sort((a,b)=>{
+      const an=(timelines.get(a)?.name||a).toLowerCase();
+      const bn=(timelines.get(b)?.name||b).toLowerCase();
+      return an.localeCompare(bn);
+    });
+    keys.forEach(id=>{
+      const name=timelines.get(id)?.name||id;
+      const useBtn=document.createElement("button"); useBtn.className="btn primary"; useBtn.textContent="使用";
+      useBtn.addEventListener("click", ()=>{
+        $("timelineSel").value=id;
+        setTimeline(id);
+      });
+      const delBtn=document.createElement("button"); delBtn.className="btn"; delBtn.textContent="刪除";
+      delBtn.addEventListener("click", async ()=>{
+        if(!state.isAdmin) return;
+        if(!confirm(`刪除 Timeline：${name} (${id})？\n（注意：只會刪除 timelines/${id} 這個文件；子集合資料需自行確認）`)) return;
+        try{
+          await deleteDoc(doc(db,"timelines", id));
+          adminMsg(`已刪除 Timeline：${id}`);
+        }catch(e){ setError(e?.message||String(e)); }
+      });
+      list.appendChild(pillRow(`${name} (${id})`, [useBtn, delBtn]));
+    });
+  }
 
-  $("addBtn").addEventListener("click", async ()=>{
+  function setTimeline(id, opts={}){
+    if(!id) return;
+    state.tlReady=true;
+    state.timelineId=id;
+    localStorage.setItem("timelineId", id);
+    $("dbgTimeline").textContent=id;
+    if(!opts.silent) setStatus(`切換 Timeline：${id}`);
+
+    if(unsubMembers) try{unsubMembers();}catch(_){}
+    if(unsubProjects) try{unsubProjects();}catch(_){}
+    if(unsubTasks) try{unsubTasks();}catch(_){}
+
+    unsubMembers = onSnapshot(query(tlPathCol("members"), orderBy("email")), (snap)=>{
+      members=new Map();
+      snap.forEach(d=>members.set(d.id, { name:(d.data()?.name||d.id) }));
+      rebuildDropdowns(); renderAdminLists(); rerender();
+    }, safeSubError("members 訂閱失敗"));
+
+    unsubProjects = onSnapshot(query(tlPathCol("projects"), orderBy("updatedAt")), (snap)=>{
+      projects=new Set(); projectMeta=new Map();
+      snap.forEach(d=>{
+        projects.add(d.id);
+        const data=d.data()||{};
+        if(data.color) projectMeta.set(d.id, { color:data.color });
+      });
+      rebuildDropdowns(); renderAdminLists(); rerender();
+    }, safeSubError("projects 訂閱失敗"));
+
+    unsubTasks = onSnapshot(query(tlPathCol("tasks"), orderBy("updatedAt")), (snap)=>{
+      allTasks=snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      $("dbgTaskCount").textContent=String(snap.size);
+      setStatus(`已連線｜timeline=${id}｜tasks=${snap.size}`);
+      rerender();
+    }, safeSubError("tasks 訂閱失敗"));
+  }
+
+
+  function safeSubError(prefix){ return (e)=> setError(prefix+"："+(e?.message||String(e))); }
+$("addBtn").addEventListener("click", async ()=>{
     if(!state.canEdit) return;
     const title=$("newTitle").value.trim();
     const projectId=$("newProject").value;
@@ -697,7 +807,7 @@ const firebaseConfig = {
     try{
       await ensureHolidayCacheForDate(start);
       const end=fmt(addWorkdays(parseDateStr(start), days));
-      await addDoc(collection(db,"tasks"), { title, projectId, assigneeEmail, status, start, end, workdays:days, updatedAt:serverTimestamp(), createdAt:serverTimestamp() });
+      await addDoc(tlPathCol("tasks"), { title, projectId, assigneeEmail, status, start, end, workdays:days, updatedAt:serverTimestamp(), createdAt:serverTimestamp() });
       $("newTitle").value=""; $("newStart").value=""; $("newDays").value="1";
     }catch(e){ setError(e?.message||String(e)); }
   });
@@ -713,7 +823,7 @@ const firebaseConfig = {
       const titleTd=document.createElement("td");
       const titleIn=mkIn(t.title||"");
       titleIn.addEventListener("change", async ()=>{ if(!state.canEdit) return;
-        try{ await updateDoc(doc(db,"tasks",t.id), { title:titleIn.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
+        try{ await updateDoc(tlPathDoc("tasks", t.id), { title:titleIn.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
       });
       titleTd.appendChild(titleIn);
 
@@ -722,7 +832,7 @@ const firebaseConfig = {
       pSel.innerHTML=[...projects].sort().map(id=>`<option value="${id}">${id}</option>`).join("");
       pSel.value=t.projectId||"";
       pSel.addEventListener("change", async ()=>{ if(!state.canEdit) return;
-        try{ await updateDoc(doc(db,"tasks",t.id), { projectId:pSel.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
+        try{ await updateDoc(tlPathDoc("tasks", t.id), { projectId:pSel.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
       });
       pTd.appendChild(pSel);
 
@@ -732,7 +842,7 @@ const firebaseConfig = {
       aSel.innerHTML='<option value="">(未指派)</option>' + memList.map(m=>`<option value="${m.email}">${m.name}</option>`).join("");
       aSel.value=t.assigneeEmail||"";
       aSel.addEventListener("change", async ()=>{ if(!state.canEdit) return;
-        try{ await updateDoc(doc(db,"tasks",t.id), { assigneeEmail:aSel.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
+        try{ await updateDoc(tlPathDoc("tasks", t.id), { assigneeEmail:aSel.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
       });
       aTd.appendChild(aSel);
 
@@ -741,7 +851,7 @@ const firebaseConfig = {
       stSel.innerHTML='<option value="todo">todo</option><option value="done">done</option>';
       stSel.value=t.status||"todo";
       stSel.addEventListener("change", async ()=>{ if(!state.canEdit) return;
-        try{ await updateDoc(doc(db,"tasks",t.id), { status:stSel.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
+        try{ await updateDoc(tlPathDoc("tasks", t.id), { status:stSel.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
       });
       stTd.appendChild(stSel);
 
@@ -751,7 +861,7 @@ const firebaseConfig = {
       sIn.addEventListener("change", async ()=>{ if(!state.canEdit) return;
         const startStr=sIn.value; const days=(typeof t.workdays==="number" && t.workdays>0) ? t.workdays : 1;
         try{ await ensureHolidayCacheForDate(startStr); const end=fmt(addWorkdays(parseDateStr(startStr), days));
-          await updateDoc(doc(db,"tasks",t.id), { start:startStr, end, updatedAt:serverTimestamp() });
+          await updateDoc(tlPathDoc("tasks", t.id), { start:startStr, end, updatedAt:serverTimestamp() });
         }catch(e){ setError(e?.message||String(e)); }
       });
       sTd.appendChild(sIn);
@@ -765,7 +875,7 @@ const firebaseConfig = {
         if(!startStr) return alert("請先填 Start");
         if(!Number.isFinite(days) || days<1) return alert("Days 請填 1 以上的整數");
         try{ await ensureHolidayCacheForDate(startStr); const end=fmt(addWorkdays(parseDateStr(startStr), days));
-          await updateDoc(doc(db,"tasks",t.id), { workdays:days, end, updatedAt:serverTimestamp() });
+          await updateDoc(tlPathDoc("tasks", t.id), { workdays:days, end, updatedAt:serverTimestamp() });
         }catch(e){ setError(e?.message||String(e)); }
       });
       dTd.appendChild(dIn);
@@ -774,7 +884,7 @@ const firebaseConfig = {
       const delBtn=document.createElement("button"); delBtn.className="btn"; delBtn.textContent="刪除"; delBtn.disabled=!state.canEdit;
       delBtn.addEventListener("click", async ()=>{ if(!state.canEdit) return;
         if(!confirm("確定刪除？")) return;
-        try{ await deleteDoc(doc(db,"tasks",t.id)); }catch(e){ setError(e?.message||String(e)); }
+        try{ await deleteDoc(tlPathDoc("tasks", t.id)); }catch(e){ setError(e?.message||String(e)); }
       });
       actTd.appendChild(delBtn);
 
@@ -974,7 +1084,7 @@ const firebaseConfig = {
         for(let ts=parseDateStr(newStart); ts<=parseDateStr(newEnd); ts=startOfDay(ts+dayMs)){
           if(!isNonWork(ts)) wd++;
         }
-        await updateDoc(doc(db,"tasks",bar.dataset.id), { start:newStart, end:newEnd, workdays:wd, updatedAt:serverTimestamp() });
+        await updateDoc(tlPathDoc("tasks", bar.dataset.id), { start:newStart, end:newEnd, workdays:wd, updatedAt:serverTimestamp() });
       }catch(e2){ setError(e2?.message||String(e2)); }
     });
   }
@@ -1022,7 +1132,7 @@ const firebaseConfig = {
       const rm=document.createElement("button"); rm.className="btn"; rm.textContent="移除";
       rm.addEventListener("click", async ()=>{
         if(!confirm(`確定刪除專案 ${id}？`)) return;
-        try{ await deleteDoc(doc(db,"projects", id)); adminMsg(`已移除專案：${id}`); }catch(e){ setError(e?.message||String(e)); }
+        try{ await deleteDoc(tlPathDoc("projects", id)); adminMsg(`已移除專案：${id}`); }catch(e){ setError(e?.message||String(e)); }
       });
       pl.appendChild(pillRow(id, [edit, rm]));
     });
@@ -1034,7 +1144,7 @@ const firebaseConfig = {
       const rm=document.createElement("button"); rm.className="btn"; rm.textContent="移除";
       rm.addEventListener("click", async ()=>{
         if(!confirm(`確定移除成員 ${email}？`)) return;
-        try{ await deleteDoc(doc(db,"members", email)); adminMsg(`已移除成員：${email}`); }catch(e){ setError(e?.message||String(e)); }
+        try{ await deleteDoc(tlPathDoc("members", email)); adminMsg(`已移除成員：${email}`); }catch(e){ setError(e?.message||String(e)); }
       });
       ml.appendChild(pillRow(`${obj?.name||"(無暱稱)"} · ${email}`, [edit, rm]));
     });
@@ -1078,11 +1188,25 @@ const firebaseConfig = {
     const color=$("projColor").value||"#4f7cff";
     if(!id) return alert("請輸入專案名稱（projectId）");
     try{
-      await setDoc(doc(db,"projects", id), { color, updatedAt:serverTimestamp(), updatedBy: state.user?.email||null }, { merge:true });
+      await setDoc(tlPathDoc("projects", id), { color, updatedAt:serverTimestamp(), updatedBy: state.user?.email||null }, { merge:true });
       adminMsg(`✅ 已新增/更新專案：${id}`);
       $("projId").value=""; $("projColor").value="#4f7cff";
     }catch(e){ setError(e?.message||String(e)); }
   });
+
+  $("timelineUpsert").addEventListener("click", async ()=>{
+    if(!state.isAdmin) return alert("只有 Admin 可以新增/更新 Timeline");
+    const id=$("timelineId").value.trim();
+    const name=$("timelineName").value.trim();
+    if(!id) return alert("請輸入 timelineId");
+    if(!/^[A-Za-z0-9_-]+$/.test(id)) return alert("timelineId 只能用英數、底線、減號（A-Z a-z 0-9 _ -）");
+    try{
+      await setDoc(doc(db,"timelines", id), { name: name||id, updatedAt:serverTimestamp(), createdAt:serverTimestamp(), createdBy: state.user?.email||null }, { merge:true });
+      adminMsg(`✅ 已新增/更新 Timeline：${id}`);
+      $("timelineId").value=""; $("timelineName").value="";
+    }catch(e){ setError(e?.message||String(e)); }
+  });
+
   $("projClear").addEventListener("click", ()=>{ $("projId").value=""; $("projColor").value="#4f7cff"; });
 
   $("editorAdd").addEventListener("click", async ()=>{
@@ -1116,7 +1240,7 @@ adminMsg(`✅ 已加入 editor：${email}`);
     const name=$("memberName").value.trim();
     if(!email) return alert("請輸入 email");
     try{
-      await setDoc(doc(db,"members", email), { email, name, updatedAt:serverTimestamp(), updatedBy: state.user?.email||null }, { merge:true });
+      await setDoc(tlPathDoc("members", email), { email, name, updatedAt:serverTimestamp(), updatedBy: state.user?.email||null }, { merge:true });
       adminMsg(`✅ 已新增/更新成員：${email}`);
       $("memberEmail").value=""; $("memberName").value="";
     }catch(e){ setError(e?.message||String(e)); }
@@ -1126,10 +1250,10 @@ adminMsg(`✅ 已加入 editor：${email}`);
   $("seedBtn")?.addEventListener("click", async ()=>{
     if(!state.canEdit) return;
     try{
-      const snap=await getDocs(collection(db,"tasks"));
+      const snap=await getDocs(tlPathCol("tasks"));
       if(!snap.empty) return alert("tasks 已經有資料了（不重複建立）");
       const today=startOfDay(Date.now());
-      await setDoc(doc(db,"projects","demo"), { color:"#4f7cff", updatedAt:serverTimestamp() }, { merge:true });
+      await setDoc(tlPathDoc("projects", "demo"), { color:"#4f7cff", updatedAt:serverTimestamp() }, { merge:true });
       const demo=[
         { title:"需求確認", projectId:"demo", assigneeEmail:"", status:"todo", start: fmt(today-10*dayMs), workdays:5 },
         { title:"開發", projectId:"demo", assigneeEmail:"", status:"todo", start: fmt(today-2*dayMs), workdays:7 },
@@ -1137,14 +1261,32 @@ adminMsg(`✅ 已加入 editor：${email}`);
       for(const t of demo){
         await ensureHolidayCacheForDate(t.start);
         const end=fmt(addWorkdays(parseDateStr(t.start), t.workdays));
-        await addDoc(collection(db,"tasks"), { ...t, end, updatedAt:serverTimestamp(), createdAt:serverTimestamp() });
+        await addDoc(tlPathCol("tasks"), { ...t, end, updatedAt:serverTimestamp(), createdAt:serverTimestamp() });
       }
       alert("已建立示範資料");
     }catch(e){ setError(e?.message||String(e)); }
   });
 
+
+
+  // subscribe timelines list
+  onSnapshot(query(collection(db,"timelines"), orderBy("createdAt")), (snap)=>{
+    timelines=new Map();
+    snap.forEach(d=>{
+      const data=d.data()||{};
+      timelines.set(d.id, { name:(data.name||d.id) });
+    });
+    renderTimelineOptions();
+    if(state.isAdmin) renderTimelineAdminList();
+  }, safeSubError("timelines 訂閱失敗"));
+
   // init
   (function initDefaults(){
+
+    // restore last timeline
+    const savedTl=localStorage.getItem("timelineId")||"";
+    if(savedTl) { state.timelineId=savedTl; $("dbgTimeline").textContent=savedTl; }
+
     document.documentElement.style.setProperty("--unitw","28px");
     $("filterProject").innerHTML='<option value="">所有專案</option>';
     $("filterAssignee").innerHTML='<option value="">所有人</option>';
