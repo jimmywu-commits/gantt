@@ -2,163 +2,517 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Firebase Realtime Gantt Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Realtime Gantt (Stable)</title>
   <style>
-    :root { --bg:#0b1020; --card:#121a33; --muted:#93a4c7; --text:#e9eeff; --line:#243055; --bar:#4f7cff; --bar2:#27c5a0; }
-    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial; background:var(--bg); color:var(--text); }
-    .wrap{ max-width:1200px; margin:24px auto; padding:0 16px; }
-    h1{ font-size:20px; margin:0 0 12px; }
-    .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    .card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; }
-    .meta{ color:var(--muted); font-size:12px; }
-    input, select, button{
-      background:#0e1530; color:var(--text); border:1px solid var(--line);
-      border-radius:10px; padding:10px 10px; font-size:14px; outline:none;
+    :root{
+      --bg:#0b1020;
+      --panel:#0f1730;
+      --panel2:#0c1328;
+      --text:#e9ecff;
+      --muted:#9aa7d6;
+      --line:rgba(255,255,255,0.10);
+      --bar:#4f7cff;
+      --offcell: rgba(255,255,255,0.06);
+      --offcell2: rgba(255,255,255,0.10);
+      --offbar: rgba(200,210,255,0.35);
+      --splitw:10px;
+      --leftw:520px;
+      --unitw:28px;
+      --rowh:34px;
+      --topbarh:56px;
+      --doneBorder:2px;
     }
-    input:focus, select:focus{ border-color:#3b58a5; }
-    button{ cursor:pointer; }
-    button.primary{ background:linear-gradient(180deg,#4f7cff,#2c5dff); border:none; }
-    button.danger{ background:#2a1230; border-color:#5a1f66; }
-    .grid{
-      display:grid;
-      grid-template-columns: 420px 1fr;
-      gap:12px;
-      margin-top:12px;
-    }
-
-    /* table */
-    table{ width:100%; border-collapse:collapse; }
-    th, td{ border-bottom:1px solid var(--line); padding:10px 8px; vertical-align:middle; }
-    th{ color:var(--muted); font-weight:600; text-align:left; font-size:12px; }
-    td small{ color:var(--muted); }
-    .pill{ font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); display:inline-block; }
-
-    /* gantt */
-    .gantt{ overflow:auto; }
-    .ganttHeader{
-      position:sticky; top:0; background:var(--card); z-index:3;
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family: ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial; background:var(--bg); color:var(--text); overflow-y:scroll; }
+    .topbar{
+      position:sticky; top:0; z-index:999;
+      height:var(--topbarh);
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 12px;
+      background:linear-gradient(180deg, rgba(15,23,48,0.98), rgba(15,23,48,0.90));
       border-bottom:1px solid var(--line);
+      backdrop-filter: blur(10px);
     }
-    .timeline{
+    .brand{ display:flex; gap:10px; align-items:center; }
+    .pill{ padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:12px; }
+    .btn{
+      border:1px solid var(--line);
+      background:#0e1530;
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:13px;
+      user-select:none;
+    }
+    .btn.primary{ background:#203064; border-color:#2a3a7a; }
+    .btn.ghost{ background:transparent; }
+    .btn:disabled{ opacity:0.5; cursor:not-allowed; }
+    .wrap{ padding:12px; }
+    .layout{ display:flex; gap:0; align-items:stretch; }
+    .leftPanel{
+      width:var(--leftw);
+      flex:0 0 var(--leftw);
+      min-width:360px;
+      max-width:1100px;
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:16px 0 0 16px;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .splitter{
+      width:var(--splitw);
+      flex:0 0 var(--splitw);
+      cursor:col-resize;
+      background:transparent;
       position:relative;
-      min-width:900px;
     }
-    .ticks{ display:flex; }
+    .splitter::before{
+      content:"";
+      position:absolute;
+      top:10px; bottom:10px; left:4px;
+      width:2px;
+      border-radius:4px;
+      background:rgba(255,255,255,0.14);
+    }
+    .rightPanel{
+      flex:1 1 auto;
+      min-width:320px;
+      min-inline-size:0;
+      background:var(--panel2);
+      border:1px solid var(--line);
+      border-left:0;
+      border-radius:0 16px 16px 0;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      height: calc(100vh - var(--topbarh) - 34px);
+      max-height: calc(100vh - var(--topbarh) - 34px);
+    }
+    .layout.collapsed .leftPanel{ display:none !important; }
+    .layout.collapsed .splitter{ display:none !important; }
+    .layout.collapsed .rightPanel{ border-left:1px solid var(--line); border-radius:16px; }
+    .panelHead{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+      background:rgba(255,255,255,0.02);
+    }
+    .panelHead .title{ font-weight:700; }
+    .cards{ padding:12px; overflow:auto; }
+    .card{
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px 10px;
+      background:rgba(255,255,255,0.02);
+      margin-bottom:10px;
+    }
+    .cardTitle{ font-weight:700; margin-bottom:8px; }
+    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    label{ font-size:12px; color:var(--muted); }
+    input, select{
+      background:#0b1024;
+      border:1px solid rgba(255,255,255,0.14);
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:12px;
+      outline:none;
+      font-size:13px;
+      max-width:100%;
+    }
+    .muted{ color:var(--muted); }
+    .error{ color:#ff8aa6; font-size:12px; white-space:pre-wrap; }
+    table{ width:100%; border-collapse:collapse; }
+    th, td{ padding:6px 6px; border-bottom:1px solid rgba(255,255,255,0.08); font-size:12px; }
+    th{ color:var(--muted); text-align:left; position:sticky; top:0; background:rgba(15,23,48,0.96); z-index:2; }
+    .cellInput{ width:100%; padding:6px 8px; border-radius:10px; font-size:12px; }
+    th.colDate{ width:7%; }
+    input[type="date"].cellInput::-webkit-calendar-picker-indicator{ opacity:0.75; cursor:pointer; filter: invert(0.75); }
+    .ganttTop{
+      display:flex; gap:10px; align-items:center;
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+      background:rgba(255,255,255,0.02);
+      flex-wrap:wrap;
+    }
+    .gantt{ position:relative; overflow:auto; flex:1 1 auto; }
+    .ticks{
+      position:relative;
+      display:flex;
+      border-bottom:1px solid rgba(255,255,255,0.10);
+      background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: var(--unitw) 100%;
+    }
     .tick{
-      flex:1; min-width:32px;
+      flex:0 0 var(--unitw);
+      width:var(--unitw);
       border-right:1px dashed rgba(255,255,255,0.08);
-      padding:8px 6px;
+      padding:8px 0;
+      text-align:center;
       color:var(--muted);
       font-size:12px;
       white-space:nowrap;
+      user-select:none;
+      line-height:1.1;
     }
+    .tick .tiny{ font-size:10px; opacity:0.9; margin-top:2px; }
+    .tick.off{ background:var(--offcell); }
+    .tick.today{ background: rgba(79,124,255,0.16); }
+    .lanes{ position:relative; }
     .lane{
       position:relative;
-      height:40px;
+      height:var(--rowh);
       border-bottom:1px solid rgba(255,255,255,0.06);
+      background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: var(--unitw) 100%;
+    }
+    .todayLine{
+      position:absolute;
+      top:0; bottom:0;
+      width:2px;
+      background: rgba(255,255,255,0.38);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.10);
+      pointer-events:none;
+      z-index: 4;
     }
     .bar{
-      position:absolute;
-      top:8px; height:24px;
-      border-radius:10px;
-      background:var(--bar);
-      box-shadow:0 6px 18px rgba(79,124,255,0.18);
-      display:flex; align-items:center;
-      padding:0 10px;
-      font-size:12px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+position:absolute;
+      top:6px;
+      height: calc(var(--rowh) - 12px);
+      border-radius:999px;
+      background: var(--bar);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0;
+      gap:8px;
+      cursor:grab;
+      user-select:none;
+      overflow:visible;
+      border: none;
     }
-    .bar.done{ background:var(--bar2); box-shadow:0 6px 18px rgba(39,197,160,0.18); }
-    .toast{ margin-top:10px; color:var(--muted); font-size:12px; }
-    .split{ display:flex; gap:10px; flex-wrap:wrap; }
-    .split > * { flex:1; min-width:160px; }
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .bar:active{ cursor:grabbing; }
+    .bar .label{ font-size:12px; white-space:nowrap; overflow:visible; text-overflow:clip; position:absolute; left:50%; transform:translateX(-50%); max-width:none; padding:0 8px; pointer-events:none; z-index:1; }
+    .handle{width:10px; height:18px; border-radius:7px; background:rgba(255,255,255,0.45); flex:0 0 auto; cursor:ew-resize; z-index:2; position:relative; }
+    
+    .handle.left{ order:-1; }
+    .handle.right{ order:2; }
+.bar.done{ background: transparent !important; border: var(--doneBorder) solid currentColor !important; box-shadow:none !important; color: currentColor !important; }
+    #expandFloating{
+      display:none;
+      position:fixed;
+      left:10px;
+      top:72px;
+      z-index:9999;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #243055;
+      background:#0e1530;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="row">
-      <h1>Firebase Realtime 甘特圖 Demo</h1>
-      <div class="meta">多人同步、即時更新、單檔 HTML。資料存 Firestore /tasks。</div>
+  <div class="topbar">
+    <div class="brand">
+      <div style="font-weight:800;">Realtime Gantt</div>
+      <div class="pill" id="whoami">Viewer</div>
+      <div class="pill" id="rangeLabel">-</div>
     </div>
+    <div class="row">
+      <button class="btn" id="loginBtn">Google 登入（編輯）</button>
+      <button class="btn ghost" id="logoutBtn" style="display:none;">登出</button>
+    </div>
+  </div>
 
-    <div class="grid">
-      <!-- Left: editor -->
-      <div class="card">
-        <div class="row" style="justify-content:space-between;">
-          <div>
-            <div class="meta">連線狀態</div>
-            <div id="status" class="mono">initializing…</div>
+  <div class="wrap">
+    <button id="expandFloating" class="btn ghost" title="展開左側面板" aria-label="展開左側面板">⟩⟩</button>
+
+    <div class="layout" id="layout">
+      <div class="leftPanel" id="leftPanel">
+        <div class="panelHead">
+          <div class="title">控制台</div>
+          <div class="row">
+            <button id="collapseBtn" class="btn ghost" title="折疊左側面板" aria-label="折疊左側面板">⟨⟨</button>
+            <button id="seedBtn" style="display:none;">Seed Demo Data</button>
           </div>
-          <button id="seedBtn" class="danger" title="建立示範資料（若 tasks 空的）">Seed Demo Data</button>
         </div>
+        <div class="cards">
+          <div class="card">
+            <div class="cardTitle">狀態</div>
+            <div id="status" class="muted">initializing…</div>
+            <div id="error" class="error"></div>
+          </div>
 
-        <hr style="border:none;border-top:1px solid var(--line); margin:12px 0;" />
-
-        <div class="meta">新增任務</div>
-        <div class="split" style="margin-top:8px;">
-          <input id="newTitle" placeholder="任務名稱，例如：上線測試" />
-          <input id="newOwner" placeholder="Owner，例如：Jimmy" />
-          <select id="newStatus">
-            <option value="todo">todo</option>
-            <option value="doing">doing</option>
-            <option value="done">done</option>
-          </select>
-        </div>
-        <div class="split" style="margin-top:8px;">
-          <input id="newStart" type="date" />
-          <input id="newEnd" type="date" />
-          <button id="addBtn" class="primary">新增</button>
-        </div>
-
-        <hr style="border:none;border-top:1px solid var(--line); margin:12px 0;" />
-
-        <div class="meta">任務清單（可直接改，會自動儲存）</div>
-        <div style="max-height:520px; overflow:auto; margin-top:6px;">
-          <table>
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Owner</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="taskRows"></tbody>
-          </table>
-        </div>
-
-        <div class="toast" id="hint"></div>
-      </div>
-
-      <!-- Right: gantt -->
-      <div class="card gantt">
-        <div class="ganttHeader">
-          <div class="row" style="padding:10px 10px 6px; align-items:flex-end;">
-            <div>
-              <div class="meta">甘特圖時間窗</div>
-              <div class="row">
-                <span class="pill">最近 30 天（含未來）</span>
-                <span class="pill" id="rangeLabel">—</span>
+          <div class="card">
+            <div class="cardTitle">Filters（過濾）</div>
+            <div class="row">
+              <div class="field" style="flex:1; min-width:180px;">
+                <label>Project</label>
+                <select id="filterProject"></select>
+              </div>
+              <div class="field" style="flex:1; min-width:180px;">
+                <label>Assignee</label>
+                <select id="filterAssignee"></select>
+              </div>
+              <div class="field" style="flex:1; min-width:160px;">
+                <label>Status</label>
+                <select id="filterStatus">
+                  <option value="">所有狀態</option>
+                  <option value="todo">todo</option>
+                  <option value="done">done</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>From</label>
+                <input id="filterFrom" type="date"/>
+              </div>
+              <div class="field">
+                <label>To</label>
+                <input id="filterTo" type="date"/>
+              </div>
+              <div class="field">
+                <label>&nbsp;</label>
+                <button class="btn" id="clearFilters">清除</button>
               </div>
             </div>
-            <div style="flex:1"></div>
-            <div class="meta">提示：此 Demo 用 onSnapshot 即時同步（不是輪詢）</div>
           </div>
-          <div class="timeline" id="ticks"></div>
+
+          <div class="card">
+            <div class="cardTitle">新增任務</div>
+            <div class="row">
+              <input id="newTitle" placeholder="Title" style="flex:2; min-width:200px;" />
+              <select id="newProject" style="flex:1; min-width:160px;"></select>
+              <select id="newAssignee" style="flex:1; min-width:160px;"></select>
+              <select id="newStatus" style="width:120px;">
+                <option value="todo">todo</option>
+                <option value="done">done</option>
+              </select>
+              <input id="newStart" type="date" />
+              <input id="newDays" type="number" min="1" step="1" value="1" style="width:110px;" />
+              <button class="btn primary" id="addBtn">新增</button>
+            </div>
+            <div class="muted" style="font-size:12px; margin-top:6px;">Days = 工作天數（包含 Start 當天；自動避開六日/國定假日）。</div>
+          </div>
+
+          <div class="card">
+            <div class="cardTitle">任務清單</div>
+            <div style="overflow:auto; max-height: 50vh;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Project</th>
+                    <th>Assignee</th>
+                    <th>Status</th>
+                    <th class="colDate">Start</th>
+                    <th class="colDate">Days</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="taskTbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" id="adminCard" style="display:none;">
+            <div class="cardTitle">Admin（管理）</div>
+            <div class="muted" style="font-size:12px; margin-bottom:8px;">管理 editors / members / projects（顏色）</div>
+
+            <div class="row" style="margin-bottom:10px;">
+              <div class="field" style="flex:1; min-width:260px;">
+                <label>新增/更新專案（projectId = 專案名稱）</label>
+                <div class="row" style="flex-wrap:nowrap;">
+                  <input id="projId" placeholder="例如：Shopee-Ads" style="flex:1; min-width:180px;" />
+                  <input id="projColor" type="color" value="#4f7cff" title="專案顏色" style="width:54px; padding:6px; height:40px;" />
+                  <button id="projUpsert" class="btn primary">新增/更新</button>
+                  <button id="projClear" class="btn">清空</button>
+                </div>
+              </div>
+            </div>
+            <div class="row" style="gap:10px;">
+              <div style="flex:1; min-width:260px;">
+                <div class="muted" style="font-size:12px; margin-bottom:6px;">Projects（點可編輯/刪除）</div>
+                <div id="projList" style="display:flex; flex-direction:column; gap:6px;"></div>
+              </div>
+              <div style="flex:1; min-width:260px;">
+                <div class="muted" style="font-size:12px; margin-bottom:6px;">Editors（可改）</div>
+                <div class="row">
+                  <input id="editorEmail" placeholder="email" style="flex:1; min-width:180px;"/>
+                  <button id="editorAdd" class="btn primary">加入</button>
+                </div>
+                <div id="editorList" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;"></div>
+              </div>
+              <div style="flex:1; min-width:260px;">
+                <div class="muted" style="font-size:12px; margin-bottom:6px;">Admins（可改）</div>
+                <div class="row">
+                  <input id="adminEmail" placeholder="email" style="flex:1; min-width:180px;"/>
+                  <button id="adminAdd" class="btn primary">加入</button>
+                </div>
+                <div id="adminList" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;"></div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px;">
+              <div class="muted" style="font-size:12px; margin-bottom:6px;">Members（顯示暱稱；Viewer 看得到但不能改）</div>
+              <div class="row">
+                <input id="memberEmail" placeholder="email" style="flex:1; min-width:180px;"/>
+                <input id="memberName" placeholder="暱稱（顯示用）" style="flex:1; min-width:140px;"/>
+                <button id="memberUpsert" class="btn primary">新增/更新</button>
+              </div>
+              <div id="memberList" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;"></div>
+            </div>
+
+            <div id="adminMsg" class="muted" style="font-size:12px; margin-top:10px;"></div>
+          </div>
+
+          <div class="card">
+            <div class="cardTitle">Debug</div>
+            <div class="muted" style="font-size:12px; line-height:1.5;">
+              <div>projectId：<span id="dbgProjectId">-</span></div>
+              <div>登入：<span id="dbgAuth">-</span></div>
+              <div>tasks 讀取筆數：<span id="dbgTaskCount">-</span></div>
+              <div>最後錯誤：<span id="dbgErr">-</span></div>
+            </div>
+          </div>
+
         </div>
-        <div class="timeline" id="lanes"></div>
+      </div>
+
+      <div class="splitter" id="splitter" title="拖曳調整左側寬度"></div>
+
+      <div class="rightPanel">
+        <div class="ganttTop">
+          <div class="row" style="gap:8px; flex-wrap:wrap;">
+            <label class="muted">時間尺度</label>
+            <select id="scaleSel">
+              <option value="day">天</option>
+              <option value="week">週</option>
+              <option value="month">月</option>
+              <option value="quarter">季</option>
+              <option value="year">年</option>
+            </select>
+
+            <label class="muted">Zoom</label>
+            <select id="zoomSel">
+              <option value="xs">小</option>
+              <option value="sm" selected>中</option>
+              <option value="md">大</option>
+            </select>
+
+            <button class="btn" id="todayBtn">跳到今天</button>
+          </div>
+          <div class="muted" style="font-size:12px;">拖曳 bar：移動日期；拉左右把手：改 Start/End（日尺度下週末/假日會灰化）。</div>
+        </div>
+
+        <div class="gantt">
+          <div class="ticks" id="ticks"></div>
+          <div class="lanes" id="lanes"></div>
+        </div>
       </div>
     </div>
   </div>
 
-  <script type="module">
-    // === 1) 把下面 firebaseConfig 換成你 Firebase 專案的設定 ===
+<script type="module">
+  const $ = (id)=>document.getElementById(id);
+  function setError(msg){ $("error").textContent = msg || ""; $("dbgErr").textContent = msg ? msg.slice(0,120) : "-"; }
+  function setStatus(msg){ $("status").textContent = msg; }
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  const dayMs = 24*60*60*1000;
+  function startOfDay(ts){ const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); }
+  function fmt(ts){ const d=new Date(ts); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+  function parseDateStr(s){
+    if(!s) return NaN;
+    const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if(m){ return startOfDay(new Date(Number(m[1]), Number(m[2])-1, Number(m[3])).getTime()); }
+    return startOfDay(new Date(s).getTime());
+  }
+  function normalizeDateInputValue(v){
+    if(!v) return "";
+    if(typeof v === "string") return v;
+    if(v instanceof Date) return fmt(v.getTime());
+    if(typeof v === "object"){
+      if(typeof v.toDate === "function") return fmt(v.toDate().getTime());
+      if(typeof v.seconds === "number") return fmt(v.seconds * 1000);
+    }
+    return "";
+  }
+  function weekdayZh(ts){ const map=["日","一","二","三","四","五","六"]; return map[new Date(ts).getDay()]; }
+
+  // Taiwan holidays (best-effort)
+  const holidayCache = new Map();
+  async function loadHolidayYear(year){
+    if(holidayCache.has(year)) return;
+    const url = `https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/${year}.json`;
+    try{
+      const res = await fetch(url, { cache:"force-cache" });
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      const data = await res.json();
+      const set = new Set();
+      for(const it of data){
+        if(it && it.isHoliday){
+          const ds = it.date; // YYYYMMDD
+          const key = `${ds.slice(0,4)}-${ds.slice(4,6)}-${ds.slice(6,8)}`;
+          set.add(key);
+        }
+      }
+      holidayCache.set(year, set);
+    }catch(_){
+      holidayCache.set(year, new Set());
+    }
+  }
+  async function ensureHolidayCacheForDate(dateStr){
+    const m=/^(\d{4})-/.exec(dateStr||"");
+    if(!m) return;
+    const y=Number(m[1]);
+    await Promise.allSettled([loadHolidayYear(y), loadHolidayYear(y-1), loadHolidayYear(y+1)]);
+  }
+  function isWeekend(ts){ const d=new Date(ts).getDay(); return d===0 || d===6; }
+  function isHoliday(ts){
+    const d=new Date(ts); const y=d.getFullYear();
+    const set=holidayCache.get(y); if(!set) return false;
+    return set.has(fmt(startOfDay(ts)));
+  }
+  function isNonWork(ts){ return isWeekend(ts) || isHoliday(ts); }
+  function addWorkdays(startTs, workdays){
+    let ts = startOfDay(startTs);
+    let remain = Math.max(1, Number(workdays)||1);
+    while(isNonWork(ts)) ts = startOfDay(ts + dayMs);
+    remain -= 1;
+    while(remain>0){
+      ts = startOfDay(ts + dayMs);
+      if(isNonWork(ts)) continue;
+      remain -= 1;
+    }
+    return ts;
+  }
+  function computeBarGradient(startTs, endTs, baseColor){
+    const s=startOfDay(startTs), e=startOfDay(endTs);
+    const days = Math.max(1, Math.round((e - s)/dayMs) + 1);
+    const seg = 100/days;
+    const stops = [];
+    for(let i=0;i<days;i++){
+      const ts = startOfDay(s + i*dayMs);
+      const c = isNonWork(ts) ? "var(--offbar)" : baseColor;
+      const a = (i*seg).toFixed(4);
+      const b = ((i+1)*seg).toFixed(4);
+      stops.push(`${c} ${a}% ${b}%`);
+    }
+    return `linear-gradient(90deg, ${stops.join(", ")})`;
+  }
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import {
+    getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc,
+    onSnapshot, query, orderBy, serverTimestamp, getDocs
+  } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyBnopz0NQayYvIamipDQ5wLS5sV1UCkV64",
   authDomain: "gantt-shopee.firebaseapp.com",
@@ -169,253 +523,636 @@ const firebaseConfig = {
   measurementId: "G-YJ0G7SGZH8"
 };
 
-    // Firebase modular SDK (CDN)
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-    import {
-      getFirestore, collection, doc, addDoc, updateDoc, deleteDoc,
-      onSnapshot, serverTimestamp, query, orderBy, getDocs
-    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-    import {
-      getAuth, signInAnonymously, onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  function configLooksPlaceholder(cfg){ return /YOUR_/i.test(JSON.stringify(cfg||{})); }
 
-    // === helpers ===
-    const $ = (id) => document.getElementById(id);
-    const fmt = (d) => new Date(d).toISOString().slice(0,10);
-    const clamp = (x,min,max) => Math.max(min, Math.min(max, x));
-    const dayMs = 24*60*60*1000;
+  let app, db, auth;
+  try{
+    if(configLooksPlaceholder(firebaseConfig)){
+      throw new Error("firebaseConfig 尚未替換（仍是 YOUR_...）。請貼上 Firebase Console 的 Web App 設定。");
+    }
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+    $("dbgProjectId").textContent = firebaseConfig.projectId || "-";
+  }catch(e){
+    setStatus("初始化失敗");
+    setError(e.message || String(e));
+    throw e;
+  }
 
-    function startOfDay(ts){ const d = new Date(ts); d.setHours(0,0,0,0); return d.getTime(); }
-    function addDays(ts, days){ return ts + days*dayMs; }
-    function daysBetween(a,b){ return Math.round((startOfDay(b)-startOfDay(a))/dayMs); }
+  const state = {
+    user:null, isAdmin:false, isEditor:false, canEdit:false,
+    filterProject:"", filterAssignee:"", filterStatus:"", filterFrom:"", filterTo:"",
+    scale:"day", zoom:"sm", viewStart: startOfDay(Date.now()) - 21*dayMs
+  };
 
-    // simple debounce per doc-id
-    const debouncers = new Map();
-    function debounceByKey(key, fn, wait=450){
-      if (debouncers.has(key)) clearTimeout(debouncers.get(key));
-      debouncers.set(key, setTimeout(fn, wait));
+  let members = new Map();
+  let projects = new Set();
+  let projectMeta = new Map();
+  let allTasks = [];
+
+  function setRolePill(){
+    if(state.isAdmin) $("whoami").textContent="Admin";
+    else if(state.isEditor) $("whoami").textContent="Editor";
+    else if(state.user) $("whoami").textContent="Viewer（已登入）";
+    else $("whoami").textContent="Viewer";
+  }
+  function setUiDisabled(){
+    const disabled = !state.canEdit;
+    ["addBtn","newTitle","newProject","newAssignee","newStatus","newStart","newDays"].forEach(id=>$(id).disabled=disabled);
+    const seed=$("seedBtn"); if(seed) seed.disabled=disabled;
+    $("adminCard").style.display = state.isAdmin ? "block" : "none";
+  }
+
+  $("loginBtn").addEventListener("click", async ()=>{
+    setError("");
+    try{ await signInWithPopup(auth, new GoogleAuthProvider()); }
+    catch(e){ setError("登入失敗：" + (e?.message||String(e))); }
+  });
+  $("logoutBtn").addEventListener("click", async ()=>{
+    try{ await signOut(auth); }catch(e){ setError(e?.message||String(e)); }
+  });
+
+  onAuthStateChanged(auth, async (u)=>{
+    state.user=u||null;
+    $("dbgAuth").textContent = u ? (u.email||"已登入") : "未登入";
+    $("loginBtn").style.display = u ? "none" : "inline-flex";
+    $("logoutBtn").style.display = u ? "inline-flex" : "none";
+
+    state.isAdmin=false; state.isEditor=false; state.canEdit=false;
+    if(u && u.email){
+      try{
+        const aSnap = await getDoc(doc(db,"admins", u.email));
+        const eSnap = await getDoc(doc(db,"editors", u.email));
+        state.isAdmin = aSnap.exists();
+        state.isEditor = eSnap.exists();
+      }catch(e){
+        setError("無法讀取權限資料（admins/editors）："+(e?.message||String(e)));
+      }
+    }
+    state.canEdit = state.isAdmin || state.isEditor;
+    setRolePill(); setUiDisabled();
+    if(state.isAdmin) renderAdminLists();
+  });
+
+  // splitter
+  (function initSplitter(){
+    const sp=$("splitter");
+    let dragging=false, startX=0, startW=520;
+    sp.addEventListener("pointerdown",(e)=>{
+      if($("layout").classList.contains("collapsed")) return;
+      dragging=true; startX=e.clientX;
+      startW=parseInt(getComputedStyle(document.documentElement).getPropertyValue("--leftw"))||520;
+      sp.setPointerCapture(e.pointerId);
+    });
+    sp.addEventListener("pointermove",(e)=>{
+      if(!dragging) return;
+      const dx=e.clientX-startX;
+      const w=Math.max(360, Math.min(1100, startW+dx));
+      document.documentElement.style.setProperty("--leftw", w+"px");
+    });
+    sp.addEventListener("pointerup",()=>dragging=false);
+  })();
+  // collapse
+  (function initCollapse(){
+    const layout=$("layout"), btnC=$("collapseBtn"), btnE=$("expandFloating");
+    let collapsed=false;
+    function upd(){ layout.classList.toggle("collapsed", collapsed); btnE.style.display=collapsed?"inline-flex":"none"; }
+    btnC.addEventListener("click",()=>{ collapsed=true; upd(); });
+    btnE.addEventListener("click",()=>{ collapsed=false; upd(); });
+    upd();
+  })();
+
+  function rebuildDropdowns(){
+    $("filterProject").innerHTML = '<option value="">所有專案</option>' + [...projects].sort().map(id=>`<option value="${id}">${id}</option>`).join("");
+    $("newProject").innerHTML = '<option value="">(選擇)</option>' + [...projects].sort().map(id=>`<option value="${id}">${id}</option>`).join("");
+    const memList=[...members.entries()].map(([email,obj])=>({email, name:(obj?.name||email)}))
+      .sort((a,b)=>a.name.localeCompare(b.name,"zh-Hant"));
+    $("filterAssignee").innerHTML = '<option value="">所有人</option>' + memList.map(m=>`<option value="${m.email}">${m.name}</option>`).join("");
+    $("newAssignee").innerHTML = '<option value="">(未指派)</option>' + memList.map(m=>`<option value="${m.email}">${m.name}</option>`).join("");
+  }
+
+  ["filterProject","filterAssignee","filterStatus","filterFrom","filterTo"].forEach(id=>{
+    $(id).addEventListener("change", ()=>{
+      state.filterProject=$("filterProject").value;
+      state.filterAssignee=$("filterAssignee").value;
+      state.filterStatus=$("filterStatus").value;
+      state.filterFrom=$("filterFrom").value;
+      state.filterTo=$("filterTo").value;
+      rerender();
+    });
+  });
+  $("clearFilters").addEventListener("click", ()=>{
+    state.filterProject=""; state.filterAssignee=""; state.filterStatus=""; state.filterFrom=""; state.filterTo="";
+    $("filterProject").value=""; $("filterAssignee").value=""; $("filterStatus").value="";
+    $("filterFrom").value=""; $("filterTo").value="";
+    rerender();
+  });
+
+  $("scaleSel").addEventListener("change", ()=>{ state.scale=$("scaleSel").value; rerender(); });
+  $("zoomSel").addEventListener("change", ()=>{
+    state.zoom=$("zoomSel").value;
+    const map={ xs:18, sm:28, md:42 };
+    document.documentElement.style.setProperty("--unitw",(map[state.zoom]||28)+"px");
+    rerender();
+  });
+  $("todayBtn").addEventListener("click", ()=>{ state.viewStart=startOfDay(Date.now())-7*dayMs; rerender(); });
+
+  function safeSubError(prefix){ return (e)=> setError(prefix+"："+(e?.message||String(e))); }
+
+  onSnapshot(query(collection(db,"members"), orderBy("email")), (snap)=>{
+    members=new Map();
+    snap.forEach(d=>members.set(d.id, { name:(d.data()?.name||d.id) }));
+    rebuildDropdowns(); renderAdminLists(); rerender();
+  }, safeSubError("members 訂閱失敗"));
+
+  onSnapshot(query(collection(db,"projects"), orderBy("updatedAt")), (snap)=>{
+    projects=new Set(); projectMeta=new Map();
+    snap.forEach(d=>{
+      projects.add(d.id);
+      const data=d.data()||{};
+      if(data.color) projectMeta.set(d.id, { color:data.color });
+    });
+    rebuildDropdowns(); renderAdminLists(); rerender();
+  }, safeSubError("projects 訂閱失敗"));
+
+  onSnapshot(query(collection(db,"tasks"), orderBy("updatedAt")), (snap)=>{
+    allTasks=snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    $("dbgTaskCount").textContent=String(snap.size);
+    setStatus(`已連線｜tasks=${snap.size}`);
+    rerender();
+  }, safeSubError("tasks 訂閱失敗"));
+
+  $("addBtn").addEventListener("click", async ()=>{
+    if(!state.canEdit) return;
+    const title=$("newTitle").value.trim();
+    const projectId=$("newProject").value;
+    const assigneeEmail=$("newAssignee").value||"";
+    const status=$("newStatus").value||"todo";
+    const start=$("newStart").value;
+    const days=parseInt($("newDays").value,10);
+    if(!title || !start) return alert("請填 Title / Start");
+    if(!projectId) return alert("請選擇專案（Project）");
+    if(!Number.isFinite(days) || days<1) return alert("Days 請填 1 以上的整數");
+    try{
+      await ensureHolidayCacheForDate(start);
+      const end=fmt(addWorkdays(parseDateStr(start), days));
+      await addDoc(collection(db,"tasks"), { title, projectId, assigneeEmail, status, start, end, workdays:days, updatedAt:serverTimestamp(), createdAt:serverTimestamp() });
+      $("newTitle").value=""; $("newStart").value=""; $("newDays").value="1";
+    }catch(e){ setError(e?.message||String(e)); }
+  });
+
+  function displayName(email){ if(!email) return ""; const m=members.get(email); return (m&&m.name)?m.name:email; }
+
+  async function renderTable(tasks){
+    const tb=$("taskTbody"); tb.innerHTML="";
+    for(const t of tasks){
+      const tr=document.createElement("tr");
+      const mkIn=(val)=>{ const i=document.createElement("input"); i.className="cellInput"; i.value=val||""; i.disabled=!state.canEdit; return i; };
+
+      const titleTd=document.createElement("td");
+      const titleIn=mkIn(t.title||"");
+      titleIn.addEventListener("change", async ()=>{ if(!state.canEdit) return;
+        try{ await updateDoc(doc(db,"tasks",t.id), { title:titleIn.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
+      });
+      titleTd.appendChild(titleIn);
+
+      const pTd=document.createElement("td");
+      const pSel=document.createElement("select"); pSel.className="cellInput"; pSel.disabled=!state.canEdit;
+      pSel.innerHTML=[...projects].sort().map(id=>`<option value="${id}">${id}</option>`).join("");
+      pSel.value=t.projectId||"";
+      pSel.addEventListener("change", async ()=>{ if(!state.canEdit) return;
+        try{ await updateDoc(doc(db,"tasks",t.id), { projectId:pSel.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
+      });
+      pTd.appendChild(pSel);
+
+      const aTd=document.createElement("td");
+      const aSel=document.createElement("select"); aSel.className="cellInput"; aSel.disabled=!state.canEdit;
+      const memList=[...members.entries()].map(([email,obj])=>({email, name:(obj?.name||email)})).sort((a,b)=>a.name.localeCompare(b.name,"zh-Hant"));
+      aSel.innerHTML='<option value="">(未指派)</option>' + memList.map(m=>`<option value="${m.email}">${m.name}</option>`).join("");
+      aSel.value=t.assigneeEmail||"";
+      aSel.addEventListener("change", async ()=>{ if(!state.canEdit) return;
+        try{ await updateDoc(doc(db,"tasks",t.id), { assigneeEmail:aSel.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
+      });
+      aTd.appendChild(aSel);
+
+      const stTd=document.createElement("td");
+      const stSel=document.createElement("select"); stSel.className="cellInput"; stSel.disabled=!state.canEdit;
+      stSel.innerHTML='<option value="todo">todo</option><option value="done">done</option>';
+      stSel.value=t.status||"todo";
+      stSel.addEventListener("change", async ()=>{ if(!state.canEdit) return;
+        try{ await updateDoc(doc(db,"tasks",t.id), { status:stSel.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
+      });
+      stTd.appendChild(stSel);
+
+      const sTd=document.createElement("td");
+      const sIn=document.createElement("input"); sIn.type="date"; sIn.className="cellInput"; sIn.disabled=!state.canEdit;
+      sIn.value=normalizeDateInputValue(t.start)||"";
+      sIn.addEventListener("change", async ()=>{ if(!state.canEdit) return;
+        const startStr=sIn.value; const days=(typeof t.workdays==="number" && t.workdays>0) ? t.workdays : 1;
+        try{ await ensureHolidayCacheForDate(startStr); const end=fmt(addWorkdays(parseDateStr(startStr), days));
+          await updateDoc(doc(db,"tasks",t.id), { start:startStr, end, updatedAt:serverTimestamp() });
+        }catch(e){ setError(e?.message||String(e)); }
+      });
+      sTd.appendChild(sIn);
+
+      const dTd=document.createElement("td");
+      const dIn=document.createElement("input"); dIn.type="number"; dIn.min="1"; dIn.step="1"; dIn.className="cellInput"; dIn.disabled=!state.canEdit;
+      if(typeof t.workdays==="number") dIn.value=String(t.workdays);
+      else dIn.value="";
+      dIn.addEventListener("change", async ()=>{ if(!state.canEdit) return;
+        const days=parseInt(dIn.value,10); const startStr=sIn.value || normalizeDateInputValue(t.start);
+        if(!startStr) return alert("請先填 Start");
+        if(!Number.isFinite(days) || days<1) return alert("Days 請填 1 以上的整數");
+        try{ await ensureHolidayCacheForDate(startStr); const end=fmt(addWorkdays(parseDateStr(startStr), days));
+          await updateDoc(doc(db,"tasks",t.id), { workdays:days, end, updatedAt:serverTimestamp() });
+        }catch(e){ setError(e?.message||String(e)); }
+      });
+      dTd.appendChild(dIn);
+
+      const actTd=document.createElement("td");
+      const delBtn=document.createElement("button"); delBtn.className="btn"; delBtn.textContent="刪除"; delBtn.disabled=!state.canEdit;
+      delBtn.addEventListener("click", async ()=>{ if(!state.canEdit) return;
+        if(!confirm("確定刪除？")) return;
+        try{ await deleteDoc(doc(db,"tasks",t.id)); }catch(e){ setError(e?.message||String(e)); }
+      });
+      actTd.appendChild(delBtn);
+
+      [titleTd,pTd,aTd,stTd,sTd,dTd,actTd].forEach(td=>tr.appendChild(td));
+      tb.appendChild(tr);
+    }
+  }
+
+  function addUnits(ts, i){
+    const d=new Date(ts);
+    switch(state.scale){
+      case "day": return startOfDay(ts + i*dayMs);
+      case "week": return startOfDay(ts + i*7*dayMs);
+      case "month": return startOfDay(new Date(d.getFullYear(), d.getMonth()+i, 1).getTime());
+      case "quarter": {
+        const q0 = d.getMonth() - (d.getMonth()%3);
+        return startOfDay(new Date(d.getFullYear(), q0 + i*3, 1).getTime());
+      }
+      case "year": return startOfDay(new Date(d.getFullYear()+i, 0, 1).getTime());
+      default: return startOfDay(ts + i*dayMs);
+    }
+  }
+  function unitsBetween(start, end){
+    const s=startOfDay(start), e=startOfDay(end);
+    if(state.scale==="day") return Math.round((e-s)/dayMs);
+    if(state.scale==="week") return Math.round((e-s)/(7*dayMs));
+    if(state.scale==="month"){
+      const ds=new Date(s), de=new Date(e);
+      return (de.getFullYear()-ds.getFullYear())*12 + (de.getMonth()-ds.getMonth());
+    }
+    if(state.scale==="quarter"){
+      const ds=new Date(s), de=new Date(e);
+      const qs=Math.floor(ds.getMonth()/3), qe=Math.floor(de.getMonth()/3);
+      return (de.getFullYear()-ds.getFullYear())*4 + (qe-qs);
+    }
+    if(state.scale==="year") return (new Date(e).getFullYear()-new Date(s).getFullYear());
+    return Math.round((e-s)/dayMs);
+  }
+  function alignStart(ts){
+    const d=new Date(ts);
+    if(state.scale==="day") return startOfDay(ts);
+    if(state.scale==="week"){
+      const dow=(d.getDay()+6)%7; // Monday=0
+      return startOfDay(ts - dow*dayMs);
+    }
+    if(state.scale==="month") return startOfDay(new Date(d.getFullYear(), d.getMonth(), 1).getTime());
+    if(state.scale==="quarter"){
+      const q0=d.getMonth()-(d.getMonth()%3);
+      return startOfDay(new Date(d.getFullYear(), q0, 1).getTime());
+    }
+    if(state.scale==="year") return startOfDay(new Date(d.getFullYear(),0,1).getTime());
+    return startOfDay(ts);
+  }
+
+  async function renderGantt(tasks){
+    const ticks=$("ticks"), lanes=$("lanes");
+    ticks.innerHTML=""; lanes.innerHTML="";
+    const winStart=alignStart(state.viewStart);
+    const unitCount = state.scale==="day" ? 60 : state.scale==="week" ? 26 : state.scale==="month" ? 18 : state.scale==="quarter" ? 12 : 8;
+    const winEnd=addUnits(winStart, unitCount);
+    $("rangeLabel").textContent = `${fmt(winStart)} → ${fmt(winEnd)}`;
+
+    if(state.scale==="day"){
+      await Promise.allSettled([loadHolidayYear(new Date(winStart).getFullYear()), loadHolidayYear(new Date(winEnd).getFullYear())]);
     }
 
-    // === 2) init ===
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+    const unitW=parseInt(getComputedStyle(document.documentElement).getPropertyValue("--unitw"))||28;
+    ticks.style.minWidth = (unitCount*unitW)+"px";
+    lanes.style.minWidth = (unitCount*unitW)+"px";
 
-    const tasksCol = collection(db, "tasks");
+    for(let i=0;i<unitCount;i++){
+      const ts=addUnits(winStart,i);
+      const el=document.createElement("div"); el.className="tick";
+      if(state.scale==="day"){
+        const show = unitW >= 22 || (i%2===0);
+        el.innerHTML = show ? `<div>${new Date(ts).getMonth()+1}/${new Date(ts).getDate()}</div><div class="tiny">${weekdayZh(ts)}</div>` : `<div>&nbsp;</div><div class="tiny">&nbsp;</div>`;
+        if(isNonWork(ts)) el.classList.add("off");
+      }else{
+        el.textContent = fmt(ts);
+      }
+      ticks.appendChild(el);
+    }
 
-    $("status").textContent = "signing in…";
+    const todayTs=alignStart(startOfDay(Date.now()));
+    const todayU=unitsBetween(winStart, todayTs);
+    if(todayU>=0 && todayU<unitCount){
+      const tickEl=ticks.children[todayU]; if(tickEl) tickEl.classList.add("today");
+      const line=document.createElement("div"); line.className="todayLine"; line.style.left=(todayU*unitW)+"px"; ticks.appendChild(line);
+      const line2=document.createElement("div"); line2.className="todayLine"; line2.style.left=(todayU*unitW)+"px"; lanes.appendChild(line2);
+    }
 
-    await signInAnonymously(auth).catch(err=>{
-      console.error(err);
-      $("status").textContent = "auth error: " + err.message;
+    for(const t of tasks){
+      const lane=document.createElement("div"); lane.className="lane";
+      if(state.scale==="day"){
+        const stops=[];
+        for(let i=0;i<unitCount;i++){
+          const ts=addUnits(winStart,i);
+          const a=((i/unitCount)*100).toFixed(4);
+          const b=(((i+1)/unitCount)*100).toFixed(4);
+          const c=isNonWork(ts) ? "var(--offcell2)" : "transparent";
+          stops.push(`${c} ${a}% ${b}%`);
+        }
+        lane.style.backgroundImage = `linear-gradient(90deg, ${stops.join(", ")}), linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px)`;
+        lane.style.backgroundSize = `100% 100%, ${unitW}px 100%`;
+      }
+
+      const startStr=normalizeDateInputValue(t.start);
+      let endStr=normalizeDateInputValue(t.end);
+      if(!endStr && Number.isFinite(t.workdays) && startStr){
+        await ensureHolidayCacheForDate(startStr);
+        endStr = fmt(addWorkdays(parseDateStr(startStr), Number(t.workdays)));
+      }
+      if(startStr && endStr){
+        const sTs=parseDateStr(startStr), eTs=parseDateStr(endStr);
+        const sU=unitsBetween(winStart, alignStart(sTs));
+        const eU=unitsBetween(winStart, alignStart(eTs));
+        const left=sU*unitW;
+        const width=Math.max(unitW, (eU-sU+1)*unitW);
+
+        const bar=document.createElement("div");
+        bar.className="bar" + (t.status==="done" ? " done" : "");
+        bar.dataset.id=t.id;
+        bar.dataset.start=startStr;
+        bar.dataset.end=endStr;
+        bar.style.left=left+"px";
+        bar.style.width=width+"px";
+
+        const projColor=projectMeta.get(t.projectId||"")?.color || "var(--bar)";
+        if(t.status==="done"){
+          bar.style.color=projColor;
+          bar.style.background="transparent";
+        }else{
+          bar.style.background = (state.scale==="day") ? computeBarGradient(sTs,eTs,projColor) : projColor;
+        }
+
+        const label=document.createElement("div"); label.className="label";
+        const ass=displayName(t.assigneeEmail||"");
+        const projName=(t.projectId||"").trim();
+        const head=projName?`${projName} · `:"";
+        label.textContent = ass ? `${head}${t.title} · ${ass}` : `${head}${t.title}`;
+        bar.appendChild(label);
+
+        const lh=document.createElement("div"); lh.className="handle left";
+        const rh=document.createElement("div"); rh.className="handle right";
+        bar.appendChild(lh); bar.appendChild(rh);
+
+        attachDrag(bar, lh, rh, winStart, unitW);
+        lane.appendChild(bar);
+      }
+      lanes.appendChild(lane);
+    }
+  }
+
+  function attachDrag(bar, leftHandle, rightHandle, winStart, unitW){
+    let mode="move", startX=0, origStart="", origEnd="";
+    function down(e,m){
+      if(!state.canEdit) return;
+      mode=m; startX=e.clientX;
+      origStart=bar.dataset.start; origEnd=bar.dataset.end;
+      bar.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    }
+    bar.addEventListener("pointerdown",(e)=>down(e,"move"));
+    leftHandle.addEventListener("pointerdown",(e)=>{ e.stopPropagation(); down(e,"resizeL"); });
+    rightHandle.addEventListener("pointerdown",(e)=>{ e.stopPropagation(); down(e,"resizeR"); });
+
+    bar.addEventListener("pointermove",(e)=>{
+      if(!bar.hasPointerCapture(e.pointerId)) return;
+      const du=Math.round((e.clientX-startX)/unitW);
+      const s0=parseDateStr(origStart), e0=parseDateStr(origEnd);
+      let s1=s0, e1=e0;
+      if(mode==="move"){ s1=startOfDay(s0+du*dayMs); e1=startOfDay(e0+du*dayMs); }
+      if(mode==="resizeL"){ s1=startOfDay(s0+du*dayMs); }
+      if(mode==="resizeR"){ e1=startOfDay(e0+du*dayMs); }
+      if(e1<s1) return;
+      const sU=unitsBetween(winStart, alignStart(s1));
+      const eU=unitsBetween(winStart, alignStart(e1));
+      bar.style.left=(sU*unitW)+"px";
+      bar.style.width=Math.max(unitW, (eU-sU+1)*unitW)+"px";
     });
 
-    onAuthStateChanged(auth, (user)=>{
-      if(!user) return;
-      $("status").textContent = `connected as uid=${user.uid}`;
-      $("hint").textContent = "開兩個瀏覽器或兩個人同時開，改任務會即時同步。";
+    bar.addEventListener("pointerup", async (e)=>{
+      if(!bar.hasPointerCapture(e.pointerId)) return;
+      bar.releasePointerCapture(e.pointerId);
+      const leftPx=parseFloat(bar.style.left||"0");
+      const widthPx=parseFloat(bar.style.width||unitW);
+      const sU=Math.round(leftPx/unitW);
+      const units=Math.max(1, Math.round(widthPx/unitW));
+      const sTs=addUnits(winStart, sU);
+      const eTs=addUnits(winStart, sU+units-1);
+      const newStart=fmt(sTs);
+      const newEnd=fmt(eTs);
+      bar.dataset.start=newStart; bar.dataset.end=newEnd;
+      try{
+        await ensureHolidayCacheForDate(newStart);
+        let wd=0;
+        for(let ts=parseDateStr(newStart); ts<=parseDateStr(newEnd); ts=startOfDay(ts+dayMs)){
+          if(!isNonWork(ts)) wd++;
+        }
+        await updateDoc(doc(db,"tasks",bar.dataset.id), { start:newStart, end:newEnd, workdays:wd, updatedAt:serverTimestamp() });
+      }catch(e2){ setError(e2?.message||String(e2)); }
     });
+  }
 
-    // === 3) UI actions ===
-    $("addBtn").addEventListener("click", async ()=>{
-      const title = $("newTitle").value.trim();
-      const owner = $("newOwner").value.trim();
-      const status = $("newStatus").value;
-      const start = $("newStart").value;
-      const end = $("newEnd").value;
+  function applyFilters(list){
+    return list.filter(t=>{
+      if(state.filterProject && (t.projectId||"")!==state.filterProject) return false;
+      if(state.filterAssignee && (t.assigneeEmail||"")!==state.filterAssignee) return false;
+      if(state.filterStatus && (t.status||"")!==state.filterStatus) return false;
+      const s=normalizeDateInputValue(t.start);
+      const from=state.filterFrom, to=state.filterTo;
+      if(from && s && s<from) return false;
+      let endStr=normalizeDateInputValue(t.end);
+      if(!endStr && Number.isFinite(t.workdays) && s) endStr=fmt(addWorkdays(parseDateStr(s), Number(t.workdays)));
+      if(to && endStr && endStr>to) return false;
+      return true;
+    });
+  }
 
-      if(!title || !start || !end){
-        alert("請至少填：Title / Start / End");
-        return;
-      }
-      if(end < start){
-        alert("End 不能早於 Start");
-        return;
-      }
+  async function rerender(){
+    const visible=applyFilters(allTasks).slice().sort((a,b)=>(normalizeDateInputValue(a.start)||"").localeCompare(normalizeDateInputValue(b.start)||""));
+    await renderTable(visible);
+    await renderGantt(visible);
+  }
 
-      await addDoc(tasksCol, {
-        title, owner, status,
-        start, end,
-        updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp()
+  // admin lists (minimal; refresh on projects/members snapshots)
+  function adminMsg(txt){ $("adminMsg").textContent=txt||""; }
+  function pillRow(text, actions=[]){
+    const row=document.createElement("div");
+    row.style.display="flex"; row.style.gap="8px"; row.style.alignItems="center"; row.style.justifyContent="space-between";
+    row.style.padding="8px 10px"; row.style.border="1px solid rgba(255,255,255,0.10)"; row.style.borderRadius="12px";
+    row.style.background="rgba(255,255,255,0.02)";
+    const left=document.createElement("div"); left.textContent=text; row.appendChild(left);
+    const right=document.createElement("div"); right.style.display="flex"; right.style.gap="6px";
+    actions.forEach(a=>right.appendChild(a)); row.appendChild(right);
+    return row;
+  }
+  function renderAdminLists(){
+    if(!state.isAdmin) return;
+    const pl=$("projList"); pl.innerHTML="";
+    [...projects].sort().forEach(id=>{
+      const color=projectMeta.get(id)?.color || "#4f7cff";
+      const edit=document.createElement("button"); edit.className="btn"; edit.textContent="編輯";
+      edit.addEventListener("click", ()=>{ $("projId").value=id; $("projColor").value=color; adminMsg(`✏️ 編輯專案：${id}`); });
+      const rm=document.createElement("button"); rm.className="btn"; rm.textContent="移除";
+      rm.addEventListener("click", async ()=>{
+        if(!confirm(`確定刪除專案 ${id}？`)) return;
+        try{ await deleteDoc(doc(db,"projects", id)); adminMsg(`已移除專案：${id}`); }catch(e){ setError(e?.message||String(e)); }
       });
-
-      $("newTitle").value = "";
-      $("newOwner").value = "";
+      pl.appendChild(pillRow(id, [edit, rm]));
     });
 
-    $("seedBtn").addEventListener("click", async ()=>{
-      const snap = await getDocs(tasksCol);
-      if(!snap.empty){
-        alert("tasks 已經有資料了（不重複建立）。");
-        return;
-      }
-      const today = startOfDay(Date.now());
-      const demo = [
-        { title:"需求確認", owner:"Jimmy", status:"done",  start: fmt(addDays(today,-10)), end: fmt(addDays(today,-6)) },
-        { title:"UI/互動稿", owner:"Amy",   status:"doing", start: fmt(addDays(today,-6)),  end: fmt(addDays(today, 2)) },
-        { title:"開發",     owner:"Ben",   status:"doing", start: fmt(addDays(today,-2)),  end: fmt(addDays(today, 8)) },
-        { title:"測試",     owner:"QA",    status:"todo",  start: fmt(addDays(today, 6)),  end: fmt(addDays(today,12)) },
-        { title:"上線",     owner:"Ops",   status:"todo",  start: fmt(addDays(today,12)),  end: fmt(addDays(today,13)) },
+    const ml=$("memberList"); ml.innerHTML="";
+    [...members.entries()].sort((a,b)=>(a[1]?.name||a[0]).localeCompare(b[1]?.name||b[0],"zh-Hant")).forEach(([email,obj])=>{
+      const edit=document.createElement("button"); edit.className="btn"; edit.textContent="編輯";
+      edit.addEventListener("click", ()=>{ $("memberEmail").value=email; $("memberName").value=obj?.name||""; adminMsg(`✏️ 編輯成員：${email}`); });
+      const rm=document.createElement("button"); rm.className="btn"; rm.textContent="移除";
+      rm.addEventListener("click", async ()=>{
+        if(!confirm(`確定移除成員 ${email}？`)) return;
+        try{ await deleteDoc(doc(db,"members", email)); adminMsg(`已移除成員：${email}`); }catch(e){ setError(e?.message||String(e)); }
+      });
+      ml.appendChild(pillRow(`${obj?.name||"(無暱稱)"} · ${email}`, [edit, rm]));
+    });
+
+    // editors list (fetch once)
+    const el=$("editorList"); el.innerHTML="";
+    getDocs(collection(db,"editors")).then(snap=>{
+      el.innerHTML="";
+      snap.forEach(d=>{
+        const email=d.id;
+        const rm=document.createElement("button"); rm.className="btn"; rm.textContent="移除";
+        rm.addEventListener("click", async ()=>{
+          if(!confirm(`移除 editor：${email}？`)) return;
+          try{ await deleteDoc(doc(db,"editors", email)); adminMsg(`已移除 editor：${email}`); renderAdminLists(); }
+          catch(e){ setError(e?.message||String(e)); }
+        });
+        el.appendChild(pillRow(email,[rm]));
+      });
+    }).catch(()=>{});
+  
+
+    // admins list (fetch once)
+    const al=$("adminList"); al.innerHTML="";
+    getDocs(collection(db,"admins")).then(snap=>{
+      al.innerHTML="";
+      snap.forEach(d=>{
+        const email=d.id;
+        const rm=document.createElement("button"); rm.className="btn"; rm.textContent="移除";
+        rm.addEventListener("click", async ()=>{
+          if(!confirm(`移除 admin：${email}？`)) return;
+          try{ await deleteDoc(doc(db,"admins", email)); adminMsg(`已移除 admin：${email}`); renderAdminLists(); }
+          catch(e){ setError(e?.message||String(e)); }
+        });
+        al.appendChild(pillRow(email,[rm]));
+      });
+    }).catch(()=>{});}
+
+  $("projUpsert").addEventListener("click", async ()=>{
+    if(!state.isAdmin) return;
+    const id=$("projId").value.trim();
+    const color=$("projColor").value||"#4f7cff";
+    if(!id) return alert("請輸入專案名稱（projectId）");
+    try{
+      await setDoc(doc(db,"projects", id), { color, updatedAt:serverTimestamp(), updatedBy: state.user?.email||null }, { merge:true });
+      adminMsg(`✅ 已新增/更新專案：${id}`);
+      $("projId").value=""; $("projColor").value="#4f7cff";
+    }catch(e){ setError(e?.message||String(e)); }
+  });
+  $("projClear").addEventListener("click", ()=>{ $("projId").value=""; $("projColor").value="#4f7cff"; });
+
+  $("editorAdd").addEventListener("click", async ()=>{
+    if(!state.isAdmin) return;
+    const email=$("editorEmail").value.trim();
+    if(!email) return alert("請輸入 email");
+    try{
+      await setDoc(doc(db,"editors", email), { addedAt:serverTimestamp(), addedBy: state.user?.email||null }, { merge:true });
+      
+  $("adminAdd").addEventListener("click", async ()=>{
+    if(!state.isAdmin) return;
+    const email=$("adminEmail").value.trim();
+    if(!email) return alert("請輸入 email");
+    try{
+      await setDoc(doc(db,"admins", email), { addedAt:serverTimestamp(), addedBy: state.user?.email||null }, { merge:true });
+      adminMsg(`✅ 已加入 admin：${email}`);
+      $("adminEmail").value="";
+      renderAdminLists();
+    }catch(e){ setError(e?.message||String(e)); }
+  });
+
+adminMsg(`✅ 已加入 editor：${email}`);
+      $("editorEmail").value="";
+      renderAdminLists();
+    }catch(e){ setError(e?.message||String(e)); }
+  });
+
+  $("memberUpsert").addEventListener("click", async ()=>{
+    if(!state.isAdmin) return;
+    const email=$("memberEmail").value.trim();
+    const name=$("memberName").value.trim();
+    if(!email) return alert("請輸入 email");
+    try{
+      await setDoc(doc(db,"members", email), { email, name, updatedAt:serverTimestamp(), updatedBy: state.user?.email||null }, { merge:true });
+      adminMsg(`✅ 已新增/更新成員：${email}`);
+      $("memberEmail").value=""; $("memberName").value="";
+    }catch(e){ setError(e?.message||String(e)); }
+  });
+
+  // seed hidden
+  $("seedBtn")?.addEventListener("click", async ()=>{
+    if(!state.canEdit) return;
+    try{
+      const snap=await getDocs(collection(db,"tasks"));
+      if(!snap.empty) return alert("tasks 已經有資料了（不重複建立）");
+      const today=startOfDay(Date.now());
+      await setDoc(doc(db,"projects","demo"), { color:"#4f7cff", updatedAt:serverTimestamp() }, { merge:true });
+      const demo=[
+        { title:"需求確認", projectId:"demo", assigneeEmail:"", status:"todo", start: fmt(today-10*dayMs), workdays:5 },
+        { title:"開發", projectId:"demo", assigneeEmail:"", status:"todo", start: fmt(today-2*dayMs), workdays:7 },
       ];
       for(const t of demo){
-        await addDoc(tasksCol, { ...t, updatedAt: serverTimestamp(), createdAt: serverTimestamp() });
+        await ensureHolidayCacheForDate(t.start);
+        const end=fmt(addWorkdays(parseDateStr(t.start), t.workdays));
+        await addDoc(collection(db,"tasks"), { ...t, end, updatedAt:serverTimestamp(), createdAt:serverTimestamp() });
       }
-      alert("已建立示範資料！");
-    });
+      alert("已建立示範資料");
+    }catch(e){ setError(e?.message||String(e)); }
+  });
 
-    // === 4) realtime listener ===
-    const q = query(tasksCol, orderBy("start", "asc"));
-    onSnapshot(q, (snap)=>{
-      const tasks = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-      renderTable(tasks);
-      renderGantt(tasks);
-    }, (err)=>{
-      console.error(err);
-      $("status").textContent = "firestore error: " + err.message;
-    });
+  // init
+  (function initDefaults(){
+    document.documentElement.style.setProperty("--unitw","28px");
+    $("filterProject").innerHTML='<option value="">所有專案</option>';
+    $("filterAssignee").innerHTML='<option value="">所有人</option>';
+    $("newProject").innerHTML='<option value="">(選擇)</option>';
+    $("newAssignee").innerHTML='<option value="">(未指派)</option>';
+    setRolePill(); setUiDisabled();
+  })();
 
-    function renderTable(tasks){
-      const tbody = $("taskRows");
-      tbody.innerHTML = "";
-
-      for(const t of tasks){
-        const tr = document.createElement("tr");
-
-        const title = document.createElement("td");
-        const titleIn = document.createElement("input");
-        titleIn.value = t.title ?? "";
-        titleIn.style.width = "100%";
-        titleIn.addEventListener("input", ()=>{
-          debounceByKey("title:"+t.id, ()=>updateDoc(doc(db,"tasks",t.id), { title: titleIn.value.trim(), updatedAt: serverTimestamp() }));
-        });
-        title.appendChild(titleIn);
-
-        const start = document.createElement("td");
-        const startIn = document.createElement("input");
-        startIn.type = "date";
-        startIn.value = t.start ?? "";
-        startIn.addEventListener("change", ()=>{
-          const v = startIn.value;
-          const endV = endIn.value;
-          if(endV && v && endV < v){ alert("End 不能早於 Start"); startIn.value = t.start ?? ""; return; }
-          updateDoc(doc(db,"tasks",t.id), { start: v, updatedAt: serverTimestamp() });
-        });
-        start.appendChild(startIn);
-
-        const end = document.createElement("td");
-        const endIn = document.createElement("input");
-        endIn.type = "date";
-        endIn.value = t.end ?? "";
-        endIn.addEventListener("change", ()=>{
-          const v = endIn.value;
-          const startV = startIn.value;
-          if(v && startV && v < startV){ alert("End 不能早於 Start"); endIn.value = t.end ?? ""; return; }
-          updateDoc(doc(db,"tasks",t.id), { end: v, updatedAt: serverTimestamp() });
-        });
-        end.appendChild(endIn);
-
-        const owner = document.createElement("td");
-        const ownerIn = document.createElement("input");
-        ownerIn.value = t.owner ?? "";
-        ownerIn.style.width = "100%";
-        ownerIn.addEventListener("input", ()=>{
-          debounceByKey("owner:"+t.id, ()=>updateDoc(doc(db,"tasks",t.id), { owner: ownerIn.value.trim(), updatedAt: serverTimestamp() }));
-        });
-        owner.appendChild(ownerIn);
-
-        const status = document.createElement("td");
-        const sel = document.createElement("select");
-        ["todo","doing","done"].forEach(s=>{
-          const op = document.createElement("option");
-          op.value = s; op.textContent = s;
-          if((t.status ?? "todo") === s) op.selected = true;
-          sel.appendChild(op);
-        });
-        sel.addEventListener("change", ()=>{
-          updateDoc(doc(db,"tasks",t.id), { status: sel.value, updatedAt: serverTimestamp() });
-        });
-        status.appendChild(sel);
-
-        const act = document.createElement("td");
-        const del = document.createElement("button");
-        del.textContent = "刪除";
-        del.className = "danger";
-        del.addEventListener("click", async ()=>{
-          if(confirm("確定刪除此任務？")){
-            await deleteDoc(doc(db,"tasks",t.id));
-          }
-        });
-        act.appendChild(del);
-
-        [title,start,end,owner,status,act].forEach(td=>tr.appendChild(td));
-        tbody.appendChild(tr);
-      }
-    }
-
-    function renderGantt(tasks){
-      // window: from today-14d to today+16d => 31 days
-      const today = startOfDay(Date.now());
-      const winStart = addDays(today, -14);
-      const winEnd   = addDays(today, 16);
-
-      $("rangeLabel").textContent = `${fmt(winStart)} → ${fmt(winEnd)}`;
-
-      const totalDays = daysBetween(winStart, winEnd) + 1;
-
-      // header ticks
-      const ticks = $("ticks");
-      ticks.innerHTML = "";
-      const ticksRow = document.createElement("div");
-      ticksRow.className = "ticks";
-      ticksRow.style.display = "flex";
-      ticksRow.style.minWidth = (totalDays*36) + "px";
-
-      for(let i=0;i<totalDays;i++){
-        const d = new Date(addDays(winStart,i));
-        const tick = document.createElement("div");
-        tick.className = "tick";
-        tick.style.flex = "0 0 36px";
-        tick.textContent = `${d.getMonth()+1}/${d.getDate()}`;
-        ticksRow.appendChild(tick);
-      }
-      ticks.appendChild(ticksRow);
-
-      // lanes
-      const lanes = $("lanes");
-      lanes.innerHTML = "";
-      lanes.style.minWidth = (totalDays*36) + "px";
-
-      for(const t of tasks){
-        const lane = document.createElement("div");
-        lane.className = "lane";
-
-        // background grid (optional)
-        lane.style.backgroundImage = `linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px)`;
-        lane.style.backgroundSize = "36px 100%";
-
-        // bar
-        const bar = document.createElement("div");
-        bar.className = "bar" + ((t.status==="done") ? " done" : "");
-        bar.title = `${t.title}\n${t.start} → ${t.end}\n${t.owner ?? ""} (${t.status ?? ""})`;
-
-        const s = t.start ? startOfDay(new Date(t.start).getTime()) : null;
-        const e = t.end   ? startOfDay(new Date(t.end).getTime())   : null;
-        if(!s || !e){ continue; }
-
-        // clip to window
-        const leftDays = clamp(daysBetween(winStart, s), 0, totalDays-1);
-        const rightDays = clamp(daysBetween(winStart, e), 0, totalDays-1);
-        const widthDays = Math.max(1, rightDays - leftDays + 1);
-
-        bar.style.left = (leftDays*36 + 6) + "px";
-        bar.style.width = (widthDays*36 - 12) + "px";
-        bar.textContent = `${t.title}${t.owner ? " · "+t.owner : ""}`;
-
-        lane.appendChild(bar);
-        lanes.appendChild(lane);
-      }
-    }
-  </script>
+</script>
 </body>
 </html>
