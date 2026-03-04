@@ -558,6 +558,7 @@ position:absolute;
     }
     return "";
   }
+  function getTaskProjectId(t){ return ((t?.projectId)||(t?.project)||(t?.projectName)||"").trim(); }
   function weekdayZh(ts){ const map=["日","一","二","三","四","五","六"]; return map[new Date(ts).getDay()]; }
 
   // Taiwan holidays (best-effort)
@@ -693,11 +694,25 @@ const firebaseConfig = {
     else if(state.user) $("whoami").textContent="Viewer（已登入）";
     else $("whoami").textContent="Viewer";
   }
+  function applyEditability(){
+    // Ensure already-rendered controls reflect latest permission state
+    const disabled = !state.canEdit;
+    // Task table inputs/selects
+    document.querySelectorAll("#taskTable .cellInput, #taskTable input, #taskTable select, #taskTable button").forEach(el=>{
+      if(el && "disabled" in el) el.disabled = disabled;
+    });
+    // Gantt drag handles (we gate handlers too, but this prevents confusing UI)
+    document.querySelectorAll(".gTask").forEach(el=>{
+      el.classList.toggle("readonly", disabled);
+    });
+  }
+
   function setUiDisabled(){
     const disabled = !state.canEdit;
     ["addBtn","newTitle","newProject","newAssignee","newStatus","newStart","newDays"].forEach(id=>$(id).disabled=disabled);
     const seed=$("seedBtn"); if(seed) seed.disabled=disabled;
     $("adminCard").style.display = state.isAdmin ? "block" : "none";
+    applyEditability();
   }
 
   $("loginBtn").addEventListener("click", async ()=>{
@@ -963,7 +978,7 @@ $("addBtn").addEventListener("click", async ()=>{
       const pTd=document.createElement("td");
       const pSel=document.createElement("select"); pSel.className="cellInput"; pSel.disabled=!state.canEdit;
       pSel.innerHTML=[...projects].sort().map(id=>`<option value="${id}">${id}</option>`).join("");
-      pSel.value=t.projectId||"";
+      pSel.value=getTaskProjectId(t)||"";
       pSel.addEventListener("change", async ()=>{ if(!state.canEdit) return;
         try{ await updateDoc(tlPathDoc("tasks", t.id), { projectId:pSel.value, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
       });
@@ -1166,7 +1181,7 @@ $("addBtn").addEventListener("click", async ()=>{
         bar.style.left=left+"px";
         bar.style.width=width+"px";
 
-        const projColor=projectMeta.get(t.projectId||"")?.color || "var(--bar)";
+        const projColor=projectMeta.get(getTaskProjectId(t)||"")?.color || "var(--bar)";
         if(t.status==="done"){
           bar.style.color=projColor;
           bar.style.background="transparent";
@@ -1176,7 +1191,7 @@ $("addBtn").addEventListener("click", async ()=>{
 
         const label=document.createElement("div"); label.className="label";
         const ass=displayName(t.assigneeEmail||"");
-        const projName=(t.projectId||"").trim();
+        const projName=getTaskProjectId(t);
         const head=projName?`${projName} · `:"";
         label.textContent = ass ? `${head}${t.title} · ${ass}` : `${head}${t.title}`;
         bar.appendChild(label);
@@ -1268,7 +1283,7 @@ function buildDefaultLinks(tasks){
   // consecutive tasks per project ordered by start date then end then id
   const byProj=new Map();
   for(const t of tasks){
-    const pid=(t.projectId||"").trim();
+    const pid=getTaskProjectId(t);
     if(!pid) continue;
     if(!byProj.has(pid)) byProj.set(pid,[]);
     byProj.get(pid).push(t);
@@ -1313,7 +1328,7 @@ async function ensureDefaultLinks(currentTasks){
 function getActiveLinks(){
   // normalize link objects
   return (allLinks||[])
-    .map(l=>({ fromId:l.fromId, toId:l.toId, projectId:l.projectId, id:l.id }))
+    .map(l=>({ fromId:(l.fromId||l.from||l.sourceId), toId:(l.toId||l.to||l.targetId), projectId:(l.projectId||l.pid||""), id:l.id }))
     .filter(l=>l.fromId && l.toId);
 }
 
@@ -1435,7 +1450,7 @@ async function onAddLinkClick(fromTaskId){
   if(!fromId || !toId) return;
 
   const tFrom=taskById.get(fromId);
-  const pid=(tFrom?.projectId||"").trim();
+  const pid=getTaskProjectId(tFrom);
   try{
     await setDoc(tlPathDoc("links", linkKey(fromId,toId)), { projectId:pid, fromId, toId, updatedAt:serverTimestamp(), createdAt:serverTimestamp() }, { merge:true });
   }catch(e){ setError(e?.message||String(e)); }
@@ -1566,7 +1581,7 @@ if(mode==="move"){
 
   function applyFilters(list){
     return list.filter(t=>{
-      if(state.filterProject && (t.projectId||"")!==state.filterProject) return false;
+      if(state.filterProject && (getTaskProjectId(t)||"")!==state.filterProject) return false;
       if(state.filterAssignee && (t.assigneeEmail||"")!==state.filterAssignee) return false;
       if(state.filterStatus && (t.status||"")!==state.filterStatus) return false;
       const s=normalizeDateInputValue(t.start);
