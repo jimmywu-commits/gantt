@@ -214,6 +214,99 @@ position:absolute;
       border:1px solid #243055;
       background:#0e1530;
     }
+  
+    .countdown{
+      margin-left:auto;
+      display:none;
+      align-items:baseline;
+      gap:6px;
+      padding:6px 10px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:rgba(255,255,255,0.02);
+    }
+    .countdown .num{
+      font-size:28px;
+      font-weight:900;
+      line-height:1;
+      color:#f3d385;
+      letter-spacing:0.5px;
+    }
+    .countdown .unit{
+      font-size:14px;
+      font-weight:800;
+      color:#f3d385;
+      opacity:0.95;
+    }
+    .countdown .label{
+      font-size:12px;
+      color:var(--muted);
+      margin-right:2px;
+    }.linkLayer{
+  position:absolute;
+  left:0; top:0;
+  width:100%; height:100%;
+  pointer-events:none;
+  overflow:visible;
+  z-index:3;
+}
+.linkPath{
+  fill:none;
+  stroke: rgba(243, 211, 133, 0.85);
+  stroke-width: 2.5;
+  pointer-events: stroke;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.45));
+}
+.linkPath.dim{ stroke: rgba(233,236,255,0.35); }
+.linkArrow{ fill: rgba(243, 211, 133, 0.95); }
+.linkAddHotspot{
+  position:absolute;
+  width:18px; height:18px;
+  border-radius:999px;
+  border:1px solid rgba(243, 211, 133, 0.75);
+  background: rgba(11,16,32,0.65);
+  display:none;
+  z-index:4;
+  pointer-events:auto;
+}
+.linkAddHotspot::after{
+  content:"+";
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  color:#f3d385;
+  font-weight:800;
+  font-size:14px;
+  line-height:1;
+}
+
+  
+    /* Hide Status UI (temporarily) */
+    .colStatus, #statusCard, #newStatus { display:none !important; }
+
+    /* Rework / Review / Brief blocks (審/修/單) */
+    .reworkBlock, .preBlock{
+      position:absolute;
+      top:6px;
+      height: calc(var(--rowh) - 12px);
+      border-radius:999px;
+      border:1px dashed rgba(255,255,255,0.22);
+      background: rgba(255,255,255,0.30);
+      pointer-events:none;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      letter-spacing: 2px;
+      color: rgba(243,211,133,0.95);
+      text-shadow: 0 1px 6px rgba(0,0,0,0.35);
+      font-size:14px;
+      line-height:1;
+    }
+    .reworkBlock.fade60{ background: rgba(255,255,255,0.60); }
+    .preBlock.fade60{ background: rgba(255,255,255,0.60); }
+
+
+
   </style>
 </head>
 <body>
@@ -242,7 +335,7 @@ position:absolute;
           </div>
         </div>
         <div class="cards">
-          <div class="card">
+          <div class="card" id="statusCard">
             <div class="cardTitle">狀態</div>
             <div id="status" class="muted">initializing…</div>
             <div id="error" class="error"></div>
@@ -288,12 +381,13 @@ position:absolute;
               <input id="newTitle" placeholder="Title" style="flex:2; min-width:200px;" />
               <select id="newProject" style="flex:1; min-width:160px;"></select>
               <select id="newAssignee" style="flex:1; min-width:160px;"></select>
-              <select id="newStatus" style="width:120px;">
+              <select id="newStatus" style="width:120px; display:none;">
                 <option value="todo">todo</option>
                 <option value="done">done</option>
               </select>
               <input id="newStart" type="date" />
               <input id="newDays" type="number" min="1" step="1" value="1" style="width:110px;" />
+              <input id="newRework" type="number" min="0" step="1" value="0" style="width:110px;" placeholder="反修數" />
               <button class="btn primary" id="addBtn">新增</button>
             </div>
             <div class="muted" style="font-size:12px; margin-top:6px;">Days = 工作天數（包含 Start 當天；自動避開六日/國定假日）。</div>
@@ -308,9 +402,10 @@ position:absolute;
                     <th>Title</th>
                     <th>Project</th>
                     <th>Assignee</th>
-                    <th>Status</th>
+                    <th class="colStatus">Status</th>
                     <th class="colDate">Start</th>
                     <th class="colDate">Days</th>
+                    <th style="width:90px;">反修數</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -335,10 +430,11 @@ position:absolute;
             </div>
 <div class="row" style="margin-bottom:10px;">
               <div class="field" style="flex:1; min-width:260px;">
-                <label>新增/更新專案（projectId = 專案名稱）</label>
+                <label>新增/更新專案（projectId = 專案名稱；可設定活動上線日）</label>
                 <div class="row" style="flex-wrap:nowrap;">
                   <input id="projId" placeholder="例如：Shopee-Ads" style="flex:1; min-width:180px;" />
                   <input id="projColor" type="color" value="#4f7cff" title="專案顏色" style="width:54px; padding:6px; height:40px;" />
+                  <input id="projLaunch" type="date" title="活動上線日" style="width:150px;" />
                   <button id="projUpsert" class="btn primary">新增/更新</button>
                   <button id="projClear" class="btn">清空</button>
                 </div>
@@ -419,6 +515,13 @@ position:absolute;
             </select>
 
             <button class="btn" id="todayBtn">跳到今天</button>
+
+            <div class="countdown" id="countdownBox" title="活動上線倒數">
+              <span class="label">倒數</span>
+              <span class="num" id="countdownNum">-</span>
+              <span class="unit">日</span>
+            </div>
+
           </div>
           <div class="muted" style="font-size:12px;">拖曳 bar：移動日期；拉左右把手：改 Start/End（日尺度下週末/假日會灰化）。</div>
         </div>
@@ -486,6 +589,19 @@ position:absolute;
     await Promise.allSettled([loadHolidayYear(y), loadHolidayYear(y-1), loadHolidayYear(y+1)]);
   }
   function isWeekend(ts){ const d=new Date(ts).getDay(); return d===0 || d===6; }
+
+  // Non-working day: weekends OR holiday calendar (incl. multi-day holidays like 春節/年假)
+  function nextWorkday(ts){
+    let t = startOfDay(ts);
+    do{ t = startOfDay(t + dayMs); }while(isNonWork(t));
+    return t;
+  }
+  function prevWorkday(ts){
+    let t = startOfDay(ts);
+    do{ t = startOfDay(t - dayMs); }while(isNonWork(t));
+    return t;
+  }
+
   function isHoliday(ts){
     const d=new Date(ts); const y=d.getFullYear();
     const set=holidayCache.get(y); if(!set) return false;
@@ -522,7 +638,7 @@ position:absolute;
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
   import {
     getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc,
-    onSnapshot, query, orderBy, serverTimestamp, getDocs
+    onSnapshot, query, orderBy, serverTimestamp, getDocs, writeBatch
   } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
     from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
@@ -536,7 +652,6 @@ const firebaseConfig = {
   appId: "1:464735306485:web:091e124256d581a1f37bbc",
   measurementId: "G-YJ0G7SGZH8"
 };
-
 
   function configLooksPlaceholder(cfg){ return /YOUR_/i.test(JSON.stringify(cfg||{})); }
 
@@ -561,11 +676,16 @@ const firebaseConfig = {
     filterProject:"", filterAssignee:"", filterStatus:"", filterFrom:"", filterTo:"",
     scale:"day", zoom:"sm", viewStart: startOfDay(Date.now()) - 21*dayMs
   };
+  const barElById=new Map();
+  const taskById=new Map();
+
 
   let members = new Map();
   let projects = new Set();
   let projectMeta = new Map();
   let allTasks = [];
+  let allLinks = [];
+
 
   function setRolePill(){
     if(state.isAdmin) $("whoami").textContent="Admin";
@@ -608,6 +728,7 @@ const firebaseConfig = {
     }
     state.canEdit = state.isAdmin || state.isEditor;
     setRolePill(); setUiDisabled();
+    rerender();
     if(state.isAdmin) renderAdminLists();
   });
 
@@ -656,6 +777,8 @@ const firebaseConfig = {
       state.filterFrom=$("filterFrom").value;
       state.filterTo=$("filterTo").value;
       rerender();
+    updateCountdown();
+      updateCountdown();
     });
   });
   $("clearFilters").addEventListener("click", ()=>{
@@ -685,7 +808,7 @@ const firebaseConfig = {
 
   // timelines (units)
   let timelines=new Map(); // id -> {name}
-  let unsubMembers=null, unsubProjects=null, unsubTasks=null;
+  let unsubMembers=null, unsubProjects=null, unsubTasks=null, unsubLinks=null;
 
   function tlPathCol(name){
     if(!state.timelineId){ setError("尚未選擇 Timeline，請先建立/選擇 Timeline"); return collection(db, name); } // fallback
@@ -767,11 +890,12 @@ const firebaseConfig = {
     if(unsubMembers) try{unsubMembers();}catch(_){}
     if(unsubProjects) try{unsubProjects();}catch(_){}
     if(unsubTasks) try{unsubTasks();}catch(_){}
+    if(unsubLinks) try{unsubLinks();}catch(_){}
 
     unsubMembers = onSnapshot(query(tlPathCol("members"), orderBy("email")), (snap)=>{
       members=new Map();
       snap.forEach(d=>members.set(d.id, { name:(d.data()?.name||d.id) }));
-      rebuildDropdowns(); renderAdminLists(); rerender();
+      rebuildDropdowns(); renderAdminLists(); rerender(); updateCountdown();
     }, safeSubError("members 訂閱失敗"));
 
     unsubProjects = onSnapshot(query(tlPathCol("projects"), orderBy("updatedAt")), (snap)=>{
@@ -779,7 +903,7 @@ const firebaseConfig = {
       snap.forEach(d=>{
         projects.add(d.id);
         const data=d.data()||{};
-        if(data.color) projectMeta.set(d.id, { color:data.color });
+        projectMeta.set(d.id, { color:(data.color||"#4f7cff"), launchDate:(data.launchDate||"") });
       });
       rebuildDropdowns(); renderAdminLists(); rerender();
     }, safeSubError("projects 訂閱失敗"));
@@ -790,6 +914,13 @@ const firebaseConfig = {
       setStatus(`已連線｜timeline=${id}｜tasks=${snap.size}`);
       rerender();
     }, safeSubError("tasks 訂閱失敗"));
+
+
+unsubLinks = onSnapshot(query(tlPathCol("links")), (snap)=>{
+  allLinks=snap.docs.map(d=>({ id:d.id, ...d.data() }));
+  $("dbgLink").textContent = `links: ${allLinks.length}`;
+  rerender();
+}, safeSubError("links 訂閱失敗"));
   }
 
 
@@ -800,6 +931,7 @@ $("addBtn").addEventListener("click", async ()=>{
     const projectId=$("newProject").value;
     const assigneeEmail=$("newAssignee").value||"";
     const status=$("newStatus").value||"todo";
+    const reworkCount=Math.max(0, parseInt($("newRework").value||"0",10) || 0);
     const start=$("newStart").value;
     const days=parseInt($("newDays").value,10);
     if(!title || !start) return alert("請填 Title / Start");
@@ -808,7 +940,7 @@ $("addBtn").addEventListener("click", async ()=>{
     try{
       await ensureHolidayCacheForDate(start);
       const end=fmt(addWorkdays(parseDateStr(start), days));
-      await addDoc(tlPathCol("tasks"), { title, projectId, assigneeEmail, status, start, end, workdays:days, updatedAt:serverTimestamp(), createdAt:serverTimestamp() });
+      await addDoc(tlPathCol("tasks"), { title, projectId, assigneeEmail, status, reworkCount, start, end, workdays:days, updatedAt:serverTimestamp(), createdAt:serverTimestamp() });
       $("newTitle").value=""; $("newStart").value=""; $("newDays").value="1";
     }catch(e){ setError(e?.message||String(e)); }
   });
@@ -847,7 +979,7 @@ $("addBtn").addEventListener("click", async ()=>{
       });
       aTd.appendChild(aSel);
 
-      const stTd=document.createElement("td");
+      const stTd=document.createElement("td"); stTd.className="colStatus";
       const stSel=document.createElement("select"); stSel.className="cellInput"; stSel.disabled=!state.canEdit;
       stSel.innerHTML='<option value="todo">todo</option><option value="done">done</option>';
       stSel.value=t.status||"todo";
@@ -881,6 +1013,18 @@ $("addBtn").addEventListener("click", async ()=>{
       });
       dTd.appendChild(dIn);
 
+
+      const rwTd=document.createElement("td");
+      const rwIn=document.createElement("input"); rwIn.type="number"; rwIn.min="0"; rwIn.step="1"; rwIn.className="cellInput"; rwIn.disabled=!state.canEdit;
+      if(typeof t.reworkCount==="number") rwIn.value=String(t.reworkCount);
+      else rwIn.value="";
+      rwIn.addEventListener("change", async ()=>{ if(!state.canEdit) return;
+        const n=parseInt(rwIn.value||"0",10);
+        const reworkCount = Number.isFinite(n) && n>0 ? n : 0;
+        try{ await updateDoc(tlPathDoc("tasks", t.id), { reworkCount, updatedAt:serverTimestamp() }); }catch(e){ setError(e?.message||String(e)); }
+      });
+      rwTd.appendChild(rwIn);
+
       const actTd=document.createElement("td");
       const delBtn=document.createElement("button"); delBtn.className="btn"; delBtn.textContent="刪除"; delBtn.disabled=!state.canEdit;
       delBtn.addEventListener("click", async ()=>{ if(!state.canEdit) return;
@@ -889,7 +1033,7 @@ $("addBtn").addEventListener("click", async ()=>{
       });
       actTd.appendChild(delBtn);
 
-      [titleTd,pTd,aTd,stTd,sTd,dTd,actTd].forEach(td=>tr.appendChild(td));
+      [titleTd,pTd,aTd,stTd,sTd,dTd,rwTd,actTd].forEach(td=>tr.appendChild(td));
       tb.appendChild(tr);
     }
   }
@@ -943,6 +1087,13 @@ $("addBtn").addEventListener("click", async ()=>{
   async function renderGantt(tasks){
     const ticks=$("ticks"), lanes=$("lanes");
     ticks.innerHTML=""; lanes.innerHTML="";
+    barElById.clear();
+    taskById.clear();
+    // link layer
+    const linkSvg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    linkSvg.setAttribute("id","linkLayer");
+    linkSvg.classList.add("linkLayer");
+    lanes.appendChild(linkSvg);
     const winStart=alignStart(state.viewStart);
     const unitCount = state.scale==="day" ? 60 : state.scale==="week" ? 26 : state.scale==="month" ? 18 : state.scale==="quarter" ? 12 : 8;
     const winEnd=addUnits(winStart, unitCount);
@@ -1010,6 +1161,8 @@ $("addBtn").addEventListener("click", async ()=>{
         bar.dataset.id=t.id;
         bar.dataset.start=startStr;
         bar.dataset.end=endStr;
+        taskById.set(t.id, t);
+        barElById.set(t.id, bar);
         bar.style.left=left+"px";
         bar.style.width=width+"px";
 
@@ -1032,12 +1185,281 @@ $("addBtn").addEventListener("click", async ()=>{
         const rh=document.createElement("div"); rh.className="handle right";
         bar.appendChild(lh); bar.appendChild(rh);
 
+        const addHot=document.createElement("div");
+        addHot.className="linkAddHotspot";
+        addHot.title="加回關連線";
+        addHot.addEventListener("pointerdown",(e)=>{ e.stopPropagation(); });
+        addHot.addEventListener("click",(e)=>{ e.stopPropagation(); onAddLinkClick(bar.dataset.id); });
+        bar.appendChild(addHot);
+
         attachDrag(bar, lh, rh, winStart, unitW);
         lane.appendChild(bar);
+
+        // 前置 5 個工作天「單」(避開六/日) — only accurate in Day scale
+        if(state.scale==="day"){
+          let c = parseDateStr(startStr);
+          const days=[];
+          for(let k=0;k<5;k++){
+            c = prevWorkday(c);
+            days.push(c);
+          }
+          days.reverse();
+          for(let di=0; di<days.length; di++){
+            const ts = days[di];
+            const idx = unitsBetween(winStart, alignStart(ts));
+            if(idx<0 || idx>=unitCount) continue;
+            const b=document.createElement("div");
+            b.className="preBlock";
+            b.textContent = (di===0 ? "單" : "");
+            b.style.left = (idx*unitW) + "px";
+            b.style.width = Math.max(6, unitW) + "px";
+            lane.appendChild(b);
+          }
+        }
+
+        // rework blocks (反修數)
+        const rw = Math.max(0, parseInt((t.reworkCount ?? 0),10) || 0);
+        if(rw>0){
+          // 審/修 blocks (after end) — only render accurately in Day scale
+          if(state.scale==="day"){
+            let cursor = parseDateStr(endStr);
+            for(let i=0;i<rw;i++){
+              // 1 workday, 60% (審)
+              cursor = nextWorkday(cursor);
+              const idx1 = unitsBetween(winStart, alignStart(cursor));
+              if(idx1>=0 && idx1<unitCount){
+                const b1=document.createElement("div");
+                b1.className="reworkBlock fade60";
+                b1.textContent="審";
+                b1.style.left = (idx1*unitW) + "px";
+                b1.style.width = Math.max(6, unitW) + "px";
+                lane.appendChild(b1);
+              }
+
+              // 1 workday, 30% (修)
+              cursor = nextWorkday(cursor);
+              const idx2 = unitsBetween(winStart, alignStart(cursor));
+              if(idx2>=0 && idx2<unitCount){
+                const b2=document.createElement("div");
+                b2.className="reworkBlock";
+                b2.textContent="修";
+                b2.style.left = (idx2*unitW) + "px";
+                b2.style.width = Math.max(6, unitW) + "px";
+                lane.appendChild(b2);
+              }
+            }
+          }
+}
+
       }
       lanes.appendChild(lane);
     }
+
+    // build default links once (if links collection empty)
+    await ensureDefaultLinks(tasks);
+    renderLinks();
+    updateAddHotspots(tasks);
   }
+
+
+function linkKey(fromId,toId){ return `${fromId}__${toId}`; }
+
+function buildDefaultLinks(tasks){
+  // consecutive tasks per project ordered by start date then end then id
+  const byProj=new Map();
+  for(const t of tasks){
+    const pid=(t.projectId||"").trim();
+    if(!pid) continue;
+    if(!byProj.has(pid)) byProj.set(pid,[]);
+    byProj.get(pid).push(t);
+  }
+  const links=[];
+  for(const [pid, arr] of byProj.entries()){
+    arr.sort((a,b)=>{
+      const as=normalizeDateInputValue(a.start)||"9999-12-31";
+      const bs=normalizeDateInputValue(b.start)||"9999-12-31";
+      if(as!==bs) return as<bs?-1:1;
+      const ae=normalizeDateInputValue(a.end)||"9999-12-31";
+      const be=normalizeDateInputValue(b.end)||"9999-12-31";
+      if(ae!==be) return ae<be?-1:1;
+      return (a.id||"").localeCompare(b.id||"");
+    });
+    for(let i=0;i<arr.length-1;i++){
+      links.push({ projectId:pid, fromId:arr[i].id, toId:arr[i+1].id, kind:"default" });
+    }
+  }
+  return links;
+}
+
+async function ensureDefaultLinks(currentTasks){
+  // if links already exist, don't auto-create
+  if(allLinks.length>0) return;
+  if(!state.canEdit) return;
+  const defaults=buildDefaultLinks(currentTasks);
+  if(defaults.length===0) return;
+  try{
+    const batch=writeBatch(db);
+    for(const l of defaults){
+      const ref=tlPathDoc("links", linkKey(l.fromId,l.toId));
+      batch.set(ref, { projectId:l.projectId, fromId:l.fromId, toId:l.toId, updatedAt:serverTimestamp(), createdAt:serverTimestamp() }, { merge:true });
+    }
+    await batch.commit();
+  }catch(e){
+    // ignore (permissions/first-writer wins), but surface in console
+    console.warn("ensureDefaultLinks failed", e);
+  }
+}
+
+function getActiveLinks(){
+  // normalize link objects
+  return (allLinks||[])
+    .map(l=>({ fromId:l.fromId, toId:l.toId, projectId:l.projectId, id:l.id }))
+    .filter(l=>l.fromId && l.toId);
+}
+
+function renderLinks(){
+  const svg=document.getElementById("linkLayer");
+  if(!svg) return;
+  // clear
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const lanes=$("lanes");
+  const rect=lanes.getBoundingClientRect();
+  const contentW = lanes.scrollWidth || rect.width;
+  const contentH = lanes.scrollHeight || rect.height;
+  svg.setAttribute("viewBox", `0 0 ${contentW} ${contentH}`);
+  svg.setAttribute("width", String(contentW));
+  svg.setAttribute("height", String(contentH));
+
+  // defs for arrow marker
+  const defs=document.createElementNS("http://www.w3.org/2000/svg","defs");
+  const marker=document.createElementNS("http://www.w3.org/2000/svg","marker");
+  marker.setAttribute("id","arrow");
+  marker.setAttribute("viewBox","0 0 10 10");
+  marker.setAttribute("refX","9");
+  marker.setAttribute("refY","5");
+  marker.setAttribute("markerWidth","7");
+  marker.setAttribute("markerHeight","7");
+  marker.setAttribute("orient","auto");
+  const arrowPath=document.createElementNS("http://www.w3.org/2000/svg","path");
+  arrowPath.setAttribute("d","M 0 0 L 10 5 L 0 10 z");
+  arrowPath.setAttribute("class","linkArrow");
+  marker.appendChild(arrowPath);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  const links=getActiveLinks();
+
+  for(const l of links){
+    const fromEl=barElById.get(l.fromId);
+    const toEl=barElById.get(l.toId);
+    if(!fromEl || !toEl) continue;
+
+    const a=fromEl.getBoundingClientRect();
+    const b=toEl.getBoundingClientRect();
+
+    const ax=(a.right - rect.left);
+    const ay=(a.top - rect.top) + a.height/2;
+    const bx=(b.left - rect.left);
+    const by=(b.top - rect.top) + b.height/2;
+
+    const midX = ax + Math.max(40, (bx-ax)*0.5);
+    const c1x = ax + 24;
+    const c1y = ay;
+    const c2x = Math.max(midX, bx-24);
+    const c2y = by;
+
+    const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d", `M ${ax} ${ay} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${bx} ${by}`);
+    p.setAttribute("class","linkPath");
+    p.setAttribute("marker-end","url(#arrow)");
+    p.dataset.fromId=l.fromId;
+    p.dataset.toId=l.toId;
+
+    // allow delete by clicking in the middle
+    p.style.pointerEvents = "stroke";
+    p.addEventListener("mouseenter", ()=>{ if(state.canEdit) p.style.cursor="not-allowed"; });
+    p.addEventListener("mouseleave", ()=>{ p.style.cursor=""; });
+    p.addEventListener("click", async (e)=>{
+      e.stopPropagation();
+      if(!state.canEdit) return;
+      try{
+        await deleteDoc(tlPathDoc("links", linkKey(l.fromId,l.toId)));
+      }catch(err){ setError(err?.message||String(err)); }
+    });
+
+    svg.appendChild(p);
+  }
+}
+
+function updateAddHotspots(tasks){
+  // show + on tail end if two consecutive tasks in same project have no active link
+  const active=new Set(getActiveLinks().map(l=>linkKey(l.fromId,l.toId)));
+  const defaults=buildDefaultLinks(tasks);
+  const wantAdd=new Set();
+  for(const l of defaults){
+    const k=linkKey(l.fromId,l.toId);
+    if(!active.has(k)) wantAdd.add(k);
+  }
+  // hide all
+  for(const [id, el] of barElById.entries()){
+    const hot=el.querySelector(".linkAddHotspot");
+    if(hot) hot.style.display="none";
+  }
+  // show for "from" bars where default link missing
+  for(const k of wantAdd){
+    const [fromId,toId]=k.split("__");
+    const fromEl=barElById.get(fromId);
+    const toEl=barElById.get(toId);
+    if(!fromEl || !toEl) continue;
+    const hot=fromEl.querySelector(".linkAddHotspot");
+    if(!hot) continue;
+
+    // place at tail end (right-middle)
+    hot.style.display="block";
+    hot.style.left="calc(100% - 10px)";
+    hot.style.top="50%";
+    hot.style.transform="translate(50%,-50%)";
+    hot.dataset.fromId=fromId;
+    hot.dataset.toId=toId;
+    hot.style.cursor="copy"; // plus-ish
+  }
+}
+
+async function onAddLinkClick(fromTaskId){
+  if(!state.canEdit) return;
+  const fromEl=barElById.get(fromTaskId);
+  const hot=fromEl?.querySelector(".linkAddHotspot");
+  const toId=hot?.dataset.toId;
+  const fromId=hot?.dataset.fromId;
+  if(!fromId || !toId) return;
+
+  const tFrom=taskById.get(fromId);
+  const pid=(tFrom?.projectId||"").trim();
+  try{
+    await setDoc(tlPathDoc("links", linkKey(fromId,toId)), { projectId:pid, fromId, toId, updatedAt:serverTimestamp(), createdAt:serverTimestamp() }, { merge:true });
+  }catch(e){ setError(e?.message||String(e)); }
+}
+
+function getLinkedComponent(startId){
+  const links=getActiveLinks();
+  const adj=new Map();
+  for(const l of links){
+    if(!adj.has(l.fromId)) adj.set(l.fromId, new Set());
+    if(!adj.has(l.toId)) adj.set(l.toId, new Set());
+    adj.get(l.fromId).add(l.toId);
+    adj.get(l.toId).add(l.fromId);
+  }
+  const seen=new Set([startId]);
+  const q=[startId];
+  while(q.length){
+    const cur=q.shift();
+    for(const nb of (adj.get(cur)||[])){
+      if(!seen.has(nb)){ seen.add(nb); q.push(nb); }
+    }
+  }
+  return seen;
+}
 
   function attachDrag(bar, leftHandle, rightHandle, winStart, unitW){
     let mode="move", startX=0, origStart="", origEnd="";
@@ -1058,6 +1480,24 @@ $("addBtn").addEventListener("click", async ()=>{
       const s0=parseDateStr(origStart), e0=parseDateStr(origEnd);
       let s1=s0, e1=e0;
       if(mode==="move"){ s1=startOfDay(s0+du*dayMs); e1=startOfDay(e0+du*dayMs); }
+      // move linked bars together (only in move mode)
+      if(mode==="move"){
+        const comp=getLinkedComponent(bar.dataset.id);
+        for(const id of comp){
+          if(id===bar.dataset.id) continue;
+          const el=barElById.get(id);
+          if(!el) continue;
+          // snapshot original start/end once per drag
+          if(!el.dataset.origStart){ el.dataset.origStart=el.dataset.start; el.dataset.origEnd=el.dataset.end; }
+          const os=parseDateStr(el.dataset.origStart), oe=parseDateStr(el.dataset.origEnd);
+          const ns=startOfDay(os+du*dayMs);
+          const ne=startOfDay(oe+du*dayMs);
+          const sU2=unitsBetween(winStart, alignStart(ns));
+          const eU2=unitsBetween(winStart, alignStart(ne));
+          el.style.left=(sU2*unitW)+"px";
+          el.style.width=Math.max(unitW,(eU2-sU2+1)*unitW)+"px";
+        }
+      }
       if(mode==="resizeL"){ s1=startOfDay(s0+du*dayMs); }
       if(mode==="resizeR"){ e1=startOfDay(e0+du*dayMs); }
       if(e1<s1) return;
@@ -1065,6 +1505,8 @@ $("addBtn").addEventListener("click", async ()=>{
       const eU=unitsBetween(winStart, alignStart(e1));
       bar.style.left=(sU*unitW)+"px";
       bar.style.width=Math.max(unitW, (eU-sU+1)*unitW)+"px";
+      // keep links in sync while dragging
+      renderLinks();
     });
 
     bar.addEventListener("pointerup", async (e)=>{
@@ -1085,8 +1527,40 @@ $("addBtn").addEventListener("click", async ()=>{
         for(let ts=parseDateStr(newStart); ts<=parseDateStr(newEnd); ts=startOfDay(ts+dayMs)){
           if(!isNonWork(ts)) wd++;
         }
-        await updateDoc(tlPathDoc("tasks", bar.dataset.id), { start:newStart, end:newEnd, workdays:wd, updatedAt:serverTimestamp() });
+
+if(mode==="move"){
+  const comp=getLinkedComponent(bar.dataset.id);
+  const batch=writeBatch(db);
+  // also update dragged bar
+  comp.add(bar.dataset.id);
+  for(const id of comp){
+    const el=barElById.get(id);
+    if(!el) continue;
+    const leftPx2=parseFloat(el.style.left||"0");
+    const widthPx2=parseFloat(el.style.width||unitW);
+    const sU2=Math.round(leftPx2/unitW);
+    const units2=Math.max(1, Math.round(widthPx2/unitW));
+    const sTs2=addUnits(winStart, sU2);
+    const eTs2=addUnits(winStart, sU2+units2-1);
+    const ns=fmt(sTs2);
+    const ne=fmt(eTs2);
+    el.dataset.start=ns; el.dataset.end=ne;
+    // cleanup drag snapshots
+    delete el.dataset.origStart; delete el.dataset.origEnd;
+
+    await ensureHolidayCacheForDate(ns);
+    let wd2=0;
+    for(let ts=parseDateStr(ns); ts<=parseDateStr(ne); ts=startOfDay(ts+dayMs)){
+      if(!isNonWork(ts)) wd2++;
+    }
+    batch.update(tlPathDoc("tasks", id), { start:ns, end:ne, workdays:wd2, updatedAt:serverTimestamp() });
+  }
+  await batch.commit();
+}else{
+  await updateDoc(tlPathDoc("tasks", bar.dataset.id), { start:newStart, end:newEnd, workdays:wd, updatedAt:serverTimestamp() });
+}
       }catch(e2){ setError(e2?.message||String(e2)); }
+      renderLinks();
     });
   }
 
@@ -1105,10 +1579,35 @@ $("addBtn").addEventListener("click", async ()=>{
     });
   }
 
+
+  function updateCountdown(){
+    const box=$("countdownBox"); if(!box) return;
+    const numEl=$("countdownNum"); if(!numEl) return;
+    const pid = state.filterProject || $("filterProject").value || "";
+    const ld = pid ? (projectMeta.get(pid)?.launchDate || "") : "";
+    if(!pid || !ld){
+      box.style.display="none";
+      numEl.textContent="-";
+      return;
+    }
+    const targetTs=parseDateStr(ld);
+    if(!Number.isFinite(targetTs)){
+      box.style.display="none";
+      numEl.textContent="-";
+      return;
+    }
+    const today=startOfDay(Date.now());
+    const diffDays = Math.ceil((targetTs - today)/dayMs);
+    box.style.display="inline-flex";
+    numEl.textContent = String(Math.max(0, diffDays));
+    box.title = `倒數 ${Math.max(0,diffDays)} 日（上線日 ${ld}）`;
+  }
+
   async function rerender(){
     const visible=applyFilters(allTasks).slice().sort((a,b)=>(normalizeDateInputValue(a.start)||"").localeCompare(normalizeDateInputValue(b.start)||""));
     await renderTable(visible);
     await renderGantt(visible);
+    updateCountdown();
   }
 
   // admin lists (minimal; refresh on projects/members snapshots)
@@ -1129,13 +1628,15 @@ $("addBtn").addEventListener("click", async ()=>{
     [...projects].sort().forEach(id=>{
       const color=projectMeta.get(id)?.color || "#4f7cff";
       const edit=document.createElement("button"); edit.className="btn"; edit.textContent="編輯";
-      edit.addEventListener("click", ()=>{ $("projId").value=id; $("projColor").value=color; adminMsg(`✏️ 編輯專案：${id}`); });
+      edit.addEventListener("click", ()=>{ $("projId").value=id; $("projColor").value=color; $("projLaunch").value=(projectMeta.get(id)?.launchDate||""); adminMsg(`✏️ 編輯專案：${id}`); });
       const rm=document.createElement("button"); rm.className="btn"; rm.textContent="移除";
       rm.addEventListener("click", async ()=>{
         if(!confirm(`確定刪除專案 ${id}？`)) return;
         try{ await deleteDoc(tlPathDoc("projects", id)); adminMsg(`已移除專案：${id}`); }catch(e){ setError(e?.message||String(e)); }
       });
-      pl.appendChild(pillRow(id, [edit, rm]));
+      const ld=(projectMeta.get(id)?.launchDate||"");
+      const label = ld ? `${id} · 上線日 ${ld}` : id;
+      pl.appendChild(pillRow(label, [edit, rm]));
     });
 
     const ml=$("memberList"); ml.innerHTML="";
@@ -1187,11 +1688,12 @@ $("addBtn").addEventListener("click", async ()=>{
     if(!state.isAdmin) return;
     const id=$("projId").value.trim();
     const color=$("projColor").value||"#4f7cff";
+    const launchDate=$("projLaunch").value||"";
     if(!id) return alert("請輸入專案名稱（projectId）");
     try{
-      await setDoc(tlPathDoc("projects", id), { color, updatedAt:serverTimestamp(), updatedBy: state.user?.email||null }, { merge:true });
+      await setDoc(tlPathDoc("projects", id), { color, launchDate, updatedAt:serverTimestamp(), updatedBy: state.user?.email||null }, { merge:true });
       adminMsg(`✅ 已新增/更新專案：${id}`);
-      $("projId").value=""; $("projColor").value="#4f7cff";
+      $("projId").value=""; $("projColor").value="#4f7cff"; $("projLaunch").value="";
     }catch(e){ setError(e?.message||String(e)); }
   });
 
@@ -1208,7 +1710,7 @@ $("addBtn").addEventListener("click", async ()=>{
     }catch(e){ setError(e?.message||String(e)); }
   });
 
-  $("projClear").addEventListener("click", ()=>{ $("projId").value=""; $("projColor").value="#4f7cff"; });
+  $("projClear").addEventListener("click", ()=>{ $("projId").value=""; $("projColor").value="#4f7cff"; $("projLaunch").value=""; });
 
   $("editorAdd").addEventListener("click", async ()=>{
     if(!state.isAdmin) return;
@@ -1216,7 +1718,12 @@ $("addBtn").addEventListener("click", async ()=>{
     if(!email) return alert("請輸入 email");
     try{
       await setDoc(doc(db,"editors", email), { addedAt:serverTimestamp(), addedBy: state.user?.email||null }, { merge:true });
-      
+      adminMsg(`✅ 已加入 editor：${email}`);
+      $("editorEmail").value="";
+      renderAdminLists();
+    }catch(e){ setError(e?.message||String(e)); }
+  });
+
   $("adminAdd").addEventListener("click", async ()=>{
     if(!state.isAdmin) return;
     const email=$("adminEmail").value.trim();
@@ -1229,13 +1736,7 @@ $("addBtn").addEventListener("click", async ()=>{
     }catch(e){ setError(e?.message||String(e)); }
   });
 
-adminMsg(`✅ 已加入 editor：${email}`);
-      $("editorEmail").value="";
-      renderAdminLists();
-    }catch(e){ setError(e?.message||String(e)); }
-  });
-
-  $("memberUpsert").addEventListener("click", async ()=>{
+$("memberUpsert").addEventListener("click", async ()=>{
     if(!state.isAdmin) return;
     const email=$("memberEmail").value.trim();
     const name=$("memberName").value.trim();
@@ -1294,6 +1795,14 @@ adminMsg(`✅ 已加入 editor：${email}`);
     $("newProject").innerHTML='<option value="">(選擇)</option>';
     $("newAssignee").innerHTML='<option value="">(未指派)</option>';
     setRolePill(); setUiDisabled();
+
+
+    // keep link layer aligned
+    window.addEventListener("resize", ()=>{ renderLinks(); });
+    const ganttEl=document.querySelector(".gantt");
+    if(ganttEl){
+      ganttEl.addEventListener("scroll", ()=>{ renderLinks(); }, { passive:true });
+    }
   })();
 
 </script>
