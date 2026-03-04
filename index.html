@@ -30,7 +30,7 @@
       height:var(--topbarh);
       display:flex; align-items:center; justify-content:space-between;
       padding:10px 12px;
-      background:linear-gradient(180deg, rgba(15,23,48,0.98), rgba(15,23,48,0.90));
+      background: rgba(255,255,255,0.06);
       border-bottom:1px solid var(--line);
       backdrop-filter: blur(10px);
     }
@@ -46,6 +46,8 @@
       font-size:13px;
       user-select:none;
     }
+    .btn.active{ border-color: rgba(243,211,133,0.65); box-shadow: 0 0 0 2px rgba(243,211,133,0.15) inset; }
+
     .btn.primary{ background:#203064; border-color:#2a3a7a; }
     .btn.ghost{ background:transparent; }
     .btn:disabled{ opacity:0.5; cursor:not-allowed; }
@@ -110,7 +112,7 @@
       background:rgba(255,255,255,0.02);
       margin-bottom:10px;
     }
-    .cardTitle{ font-weight:700; margin-bottom:8px; }
+    .cardTitle{ font-weight:700; margin:-10px -10px 10px; padding:8px 10px; background:rgba(255,255,255,0.06); border-bottom:1px solid var(--line); border-radius:14px 14px 0 0; }
     .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .field{ display:flex; flex-direction:column; gap:6px; }
     label{ font-size:12px; color:var(--muted); }
@@ -498,8 +500,8 @@ position:absolute;
             <label class="muted">Timeline</label>
             <select id="timelineSel" style="min-width:180px;"></select>
             <span class="muted" id="timelineHint" style="font-size:12px;"></span>
-            <label class="muted">時間尺度</label>
-            <select id="scaleSel">
+            <label class="muted" style="display:none">時間尺度</label>
+            <select id="scaleSel" style="display:none">
               <option value="day">天</option>
               <option value="week">週</option>
               <option value="month">月</option>
@@ -509,12 +511,15 @@ position:absolute;
 
             <label class="muted">Zoom</label>
             <select id="zoomSel">
-              <option value="xs">小</option>
+              <option value="xs" style="display:none">小</option>
               <option value="sm" selected>中</option>
               <option value="md">大</option>
             </select>
 
             <button class="btn" id="todayBtn">跳到今天</button>
+
+            <button class="btn" id="rangeQuarterBtn">呈現季範圍</button>
+            <button class="btn" id="rangeYearBtn">呈現年範圍</button>
 
             <div class="countdown" id="countdownBox" title="活動上線倒數">
               <span class="label">倒數</span>
@@ -564,6 +569,10 @@ position:absolute;
   // Taiwan holidays (best-effort)
   const holidayCache = new Map();
   async function loadHolidayYear(year){
+    // Avoid requesting unavailable future years (prevents noisy 404s)
+    const HOLIDAY_MAX_YEAR = 2026;
+    const HOLIDAY_MIN_YEAR = 2017;
+    if(year < HOLIDAY_MIN_YEAR || year > HOLIDAY_MAX_YEAR) { holidayCache.set(year, new Set()); return; }
     if(holidayCache.has(year)) return;
     const url = `https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/${year}.json`;
     try{
@@ -581,6 +590,8 @@ position:absolute;
       holidayCache.set(year, set);
     }catch(_){
       holidayCache.set(year, new Set());
+      return;
+
     }
   }
   async function ensureHolidayCacheForDate(dateStr){
@@ -675,7 +686,11 @@ const firebaseConfig = {
     user:null, isAdmin:false, isEditor:false, canEdit:false, timelineId:"",
     tlReady:false,
     filterProject:"", filterAssignee:"", filterStatus:"", filterFrom:"", filterTo:"",
-    scale:"day", zoom:"sm", viewStart: startOfDay(Date.now()) - 21*dayMs
+    scale:"day", zoom:"sm", viewStart:startOfDay(Date.now()) - 7*dayMs,
+    viewPreset:"year",
+    renderToken:0,
+    winStart:null,
+    unitW:28
   };
   const barElById=new Map();
   const taskById=new Map();
@@ -743,7 +758,8 @@ const firebaseConfig = {
     }
     state.canEdit = state.isAdmin || state.isEditor;
     setRolePill(); setUiDisabled();
-    rerender();
+    // default: year range + jump to today
+    jumpToToday();
     if(state.isAdmin) renderAdminLists();
   });
 
@@ -810,7 +826,22 @@ const firebaseConfig = {
     document.documentElement.style.setProperty("--unitw",(map[state.zoom]||28)+"px");
     rerender();
   });
-  $("todayBtn").addEventListener("click", ()=>{ state.viewStart=startOfDay(Date.now())-7*dayMs; rerender(); });
+  $("todayBtn").addEventListener("click", async ()=>{ await jumpToToday(); });
+function setViewPreset(p){
+    state.viewPreset=p;
+    state.viewStart=startOfDay(Date.now());
+    syncPresetButtons();
+    rerender();
+  }
+  function syncPresetButtons(){
+    const qb=$("rangeQuarterBtn"), yb=$("rangeYearBtn");
+    if(!qb||!yb) return;
+    qb.classList.toggle("active", state.viewPreset==="quarter");
+    yb.classList.toggle("active", state.viewPreset==="year");
+  }
+  $("rangeQuarterBtn").addEventListener("click", ()=>setViewPreset("quarter"));
+  $("rangeYearBtn").addEventListener("click", ()=>setViewPreset("year"));
+  syncPresetButtons();
 
   $("timelineSel").addEventListener("change", ()=>{
     const id=$("timelineSel").value;
@@ -898,6 +929,7 @@ const firebaseConfig = {
     if(!id) return;
     state.tlReady=true;
     state.timelineId=id;
+    state.defaultLinksTried=false;
     localStorage.setItem("timelineId", id);
     $("dbgTimeline").textContent=id;
     if(!opts.silent) setStatus(`切換 Timeline：${id}`);
@@ -932,11 +964,26 @@ const firebaseConfig = {
 
 
 unsubLinks = onSnapshot(query(tlPathCol("links")), (snap)=>{
-  allLinks=snap.docs.map(d=>({ id:d.id, ...d.data() }));
+allLinks=snap.docs.map(d=>({ id:d.id, ...d.data() }));
   $("dbgLink").textContent = `links: ${allLinks.length}`;
   rerender();
 }, safeSubError("links 訂閱失敗"));
-  }
+}
+
+async function jumpToToday(){
+  // Center timeline around today (also used on initial load)
+  state.viewStart = startOfDay(Date.now());
+  // Keep preset as-is; rerender updates winStart/unitW and the visible window.
+  await rerender();
+  // After rerender, scroll gantt container so today is visible.
+  const ganttEl = document.querySelector(".gantt");
+  if(!ganttEl || !state.winStart || !state.unitW) return;
+  const today = startOfDay(Date.now());
+  const daysFromStart = Math.round((today - state.winStart)/dayMs);
+  const target = Math.max(0, daysFromStart * state.unitW - 7 * state.unitW);
+  ganttEl.scrollLeft = target;
+}
+
 
 
   function safeSubError(prefix){ return (e)=> setError(prefix+"："+(e?.message||String(e))); }
@@ -962,7 +1009,8 @@ $("addBtn").addEventListener("click", async ()=>{
 
   function displayName(email){ if(!email) return ""; const m=members.get(email); return (m&&m.name)?m.name:email; }
 
-  async function renderTable(tasks){
+  async function renderTable(tasks, token){
+    if(token!=null && token!==state.renderToken) return;
     const tb=$("taskTbody"); tb.innerHTML="";
     for(const t of tasks){
       const tr=document.createElement("tr");
@@ -1099,7 +1147,8 @@ $("addBtn").addEventListener("click", async ()=>{
     return startOfDay(ts);
   }
 
-  async function renderGantt(tasks){
+  async function renderGantt(tasks, token){
+    if(token!=null && token!==state.renderToken) return;
     const ticks=$("ticks"), lanes=$("lanes");
     ticks.innerHTML=""; lanes.innerHTML="";
     barElById.clear();
@@ -1109,16 +1158,38 @@ $("addBtn").addEventListener("click", async ()=>{
     linkSvg.setAttribute("id","linkLayer");
     linkSvg.classList.add("linkLayer");
     lanes.appendChild(linkSvg);
-    const winStart=alignStart(state.viewStart);
-    const unitCount = state.scale==="day" ? 60 : state.scale==="week" ? 26 : state.scale==="month" ? 18 : state.scale==="quarter" ? 12 : 8;
+    let winStart=alignStart(state.viewStart);
+let unitCount = state.scale==="day" ? 60 : state.scale==="week" ? 26 : state.scale==="month" ? 18 : state.scale==="quarter" ? 12 : 8;
+
+// View range presets (keep scale at "day" but change the visible window)
+if(state.scale==="day" && (state.viewPreset==="quarter" || state.viewPreset==="year")){
+  const base=new Date(state.viewStart);
+  const startOfQuarter=(d)=>{ const q0=d.getMonth()-(d.getMonth()%3); return startOfDay(new Date(d.getFullYear(), q0, 1).getTime()); };
+  const startOfYear=(d)=> startOfDay(new Date(d.getFullYear(),0,1).getTime());
+  const addMonths=(ts, m)=> startOfDay(new Date(new Date(ts).getFullYear(), new Date(ts).getMonth()+m, 1).getTime());
+  if(state.viewPreset==="quarter"){
+    winStart=startOfQuarter(base);
+    const end=addMonths(winStart,3); // exclusive
+    unitCount=Math.max(1, Math.round((end-winStart)/dayMs));
+  }else{
+    winStart=startOfYear(base);
+    const end=addMonths(winStart,12); // exclusive
+    unitCount=Math.max(1, Math.round((end-winStart)/dayMs));
+  }
+}
+
+state.winStart = winStart;
     const winEnd=addUnits(winStart, unitCount);
+
     $("rangeLabel").textContent = `${fmt(winStart)} → ${fmt(winEnd)}`;
 
     if(state.scale==="day"){
-      await Promise.allSettled([loadHolidayYear(new Date(winStart).getFullYear()), loadHolidayYear(new Date(winEnd).getFullYear())]);
+      await Promise.allSettled([loadHolidayYear(new Date(winStart).getFullYear()), loadHolidayYear(new Date(winEnd - dayMs).getFullYear())]);
+    if(token!=null && token!==state.renderToken) return;
     }
 
     const unitW=parseInt(getComputedStyle(document.documentElement).getPropertyValue("--unitw"))||28;
+    state.unitW = unitW;
     ticks.style.minWidth = (unitCount*unitW)+"px";
     lanes.style.minWidth = (unitCount*unitW)+"px";
 
@@ -1310,6 +1381,8 @@ async function ensureDefaultLinks(currentTasks){
   // if links already exist, don't auto-create
   if(allLinks.length>0) return;
   if(!state.canEdit) return;
+  if(state.defaultLinksTried) return;
+  state.defaultLinksTried = true;
   const defaults=buildDefaultLinks(currentTasks);
   if(defaults.length===0) return;
   try{
@@ -1320,9 +1393,9 @@ async function ensureDefaultLinks(currentTasks){
     }
     await batch.commit();
   }catch(e){
-    // ignore (permissions/first-writer wins), but surface in console
-    console.warn("ensureDefaultLinks failed", e);
-  }
+    // If permissions block link auto-creation, don't spam errors; user can still manually add when permitted.
+    setError("無法自動建立關連線（權限不足）。如需預設線，請確認 Firestore rules 允許寫入 timelines/{id}/links。");
+}
 }
 
 function getActiveLinks(){
@@ -1618,11 +1691,17 @@ if(mode==="move"){
     box.title = `倒數 ${Math.max(0,diffDays)} 日（上線日 ${ld}）`;
   }
 
-  async function rerender(){
+  async function rerenderWithToken(token){
+    // If token is omitted, generate one.
+    if(token==null) token = ++state.renderToken;
     const visible=applyFilters(allTasks).slice().sort((a,b)=>(normalizeDateInputValue(a.start)||"").localeCompare(normalizeDateInputValue(b.start)||""));
-    await renderTable(visible);
-    await renderGantt(visible);
+    await renderTable(visible, token);
+    await renderGantt(visible, token);
     updateCountdown();
+  }
+  async function rerender(){
+    const token = ++state.renderToken;
+    return rerenderWithToken(token);
   }
 
   // admin lists (minimal; refresh on projects/members snapshots)
