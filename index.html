@@ -13,8 +13,8 @@
       --muted:#9aa7d6;
       --line:rgba(255,255,255,0.10);
       --bar:#4f7cff;
-      --offcell: rgba(255,255,255,0.06);
-      --offcell2: rgba(255,255,255,0.10);
+      --offcell: rgba(255,255,255,0.04);
+      --offcell2: #161c30;
       --offbar: rgba(200,210,255,0.35);
       --splitw:10px;
       --leftw:520px;
@@ -30,7 +30,7 @@
       height:var(--topbarh);
       display:flex; align-items:center; justify-content:space-between;
       padding:10px 12px;
-      background: rgba(255,255,255,0.06);
+      background: #2d3346;
       border-bottom:1px solid var(--line);
       backdrop-filter: blur(10px);
     }
@@ -101,7 +101,7 @@
       display:flex; align-items:center; justify-content:space-between;
       padding:10px 12px;
       border-bottom:1px solid var(--line);
-      background:rgba(255,255,255,0.02);
+      background:#2c3349;
     }
     .panelHead .title{ font-weight:700; }
     .cards{ padding:12px; overflow:auto; }
@@ -112,7 +112,7 @@
       background:rgba(255,255,255,0.02);
       margin-bottom:10px;
     }
-    .cardTitle{ font-weight:700; margin:-10px -10px 10px; padding:8px 10px; background:rgba(255,255,255,0.06); border-bottom:1px solid var(--line); border-radius:14px 14px 0 0; }
+    .cardTitle{ font-weight:700; margin:-10px -10px 10px; padding:8px 10px; background:#2d3346; border-bottom:1px solid var(--line); border-radius:14px 14px 0 0; }
     .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .field{ display:flex; flex-direction:column; gap:6px; }
     label{ font-size:12px; color:var(--muted); }
@@ -138,7 +138,7 @@
       display:flex; gap:10px; align-items:center;
       padding:10px 12px;
       border-bottom:1px solid var(--line);
-      background:rgba(255,255,255,0.02);
+      background:#2c3349;
       flex-wrap:wrap;
     }
     .gantt{ position:relative; overflow:auto; flex:1 1 auto; }
@@ -146,7 +146,7 @@
       position:relative;
       display:flex;
       border-bottom:1px solid rgba(255,255,255,0.10);
-      background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-image: linear-gradient(to right, #2d3346 1px, transparent 1px);
       background-size: var(--unitw) 100%;
     }
     .tick{
@@ -160,7 +160,8 @@
       white-space:nowrap;
       user-select:none;
       line-height:1.1;
-    }
+    
+      box-sizing: border-box;}
     .tick .tiny{ font-size:10px; opacity:0.9; margin-top:2px; }
     .tick.off{ background:var(--offcell); }
     .tick.today{ background: rgba(79,124,255,0.16); }
@@ -168,18 +169,21 @@
     .lane{
       position:relative;
       height:var(--rowh);
-      border-bottom:1px solid rgba(255,255,255,0.06);
-      background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px);
+      border-bottom:1px solid #2d3346;
       background-size: var(--unitw) 100%;
+      background: #161c30;
+      background-image: none;
+
+      z-index:1;
     }
     .todayLine{
       position:absolute;
       top:0; bottom:0;
       width:2px;
-      background: rgba(255,255,255,0.38);
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.10);
+      background:#f3d385;
+      box-shadow:none;
       pointer-events:none;
-      z-index: 4;
+      z-index:5;
     }
     .bar{
 position:absolute;
@@ -309,7 +313,47 @@ position:absolute;
 
 
 
-  </style>
+  
+/* 讓日期直線在bar區域仍可辨識：把格線「畫進bar背景」(不提高層級、不蓋過bar) */
+.bar{
+  background-image: repeating-linear-gradient(to right, #2d334633 0 1px, transparent 1px var(--unitw));
+  background-size: var(--unitw) 100%;
+}
+
+
+/* 非工作日背景：使用實體色塊 overlay（避免 linear-gradient 邊界霧化/外溢） */
+.lanes{ position: relative; }
+.nonWorkOverlay{
+  position:absolute;
+  top:0; left:0;
+  height:100%;
+  pointer-events:none;
+  z-index:0; /* 在線與bar下面 */
+}
+.nonWorkCell{
+  position:absolute;
+  top:0;
+  height:100%;
+  background: #2d3346; /* 週末/國定假日色塊 */
+}
+.lane{ position:relative; z-index:1; }
+
+
+/* 交錯平日底色（方案2） */
+.dayStripeOverlay{
+  position:absolute;
+  top:0; left:0;
+  height:100%;
+  pointer-events:none;
+  z-index:0;
+}
+.dayStripeCell{
+  position:absolute;
+  top:0;
+  height:100%;
+}
+
+</style>
 </head>
 <body>
   <div class="topbar">
@@ -1178,6 +1222,61 @@ if(state.scale==="day" && (state.viewPreset==="quarter" || state.viewPreset==="y
   }
 }
 
+// --- 非工作日 overlay：用實體色塊畫「週末 + 台灣國定假日/連假」---
+// --- 底色渲染：交錯平日 + 非工作日覆蓋 ---
+function renderNonWorkOverlay(lanes, winStart, unitCount, unitW){
+  if(!lanes) return;
+
+  // 清除舊層
+  const oldStripe = lanes.querySelector(":scope > .dayStripeOverlay");
+  if(oldStripe) oldStripe.remove();
+  const oldNonWork = lanes.querySelector(":scope > .nonWorkOverlay");
+  if(oldNonWork) oldNonWork.remove();
+
+  // ① 交錯平日底色（方案2）
+  const stripeOverlay = document.createElement("div");
+  stripeOverlay.className = "dayStripeOverlay";
+  stripeOverlay.style.width = (unitCount * unitW) + "px";
+
+  for(let i=0;i<unitCount;i++){
+    const cell = document.createElement("div");
+    cell.className = "dayStripeCell";
+    cell.style.left = (i * unitW) + "px";
+    cell.style.width = unitW + "px";
+    cell.style.background = (i % 2 === 0) ? "#161c30" : "#202742";
+    stripeOverlay.appendChild(cell);
+  }
+
+  lanes.prepend(stripeOverlay);
+
+  // ② 非工作日覆蓋（週末 + 台灣國定假日）
+  const nonWorkOverlay = document.createElement("div");
+  nonWorkOverlay.className = "nonWorkOverlay";
+  nonWorkOverlay.style.width = (unitCount * unitW) + "px";
+
+  for(let i=0;i<unitCount;i++){
+    const ts = addUnits(winStart, i);
+    let nonWork = false;
+    try{
+      nonWork = isWeekend(ts) || isHoliday(ts);
+    }catch(e){
+      nonWork = isWeekend(ts);
+    }
+    if(!nonWork) continue;
+
+    const cell = document.createElement("div");
+    cell.className = "nonWorkCell";
+    cell.style.left = (i * unitW) + "px";
+    cell.style.width = unitW + "px";
+    cell.style.background = "#2d3346";
+    nonWorkOverlay.appendChild(cell);
+  }
+
+  lanes.prepend(nonWorkOverlay);
+}
+
+
+
 state.winStart = winStart;
     const winEnd=addUnits(winStart, unitCount);
 
@@ -1212,7 +1311,8 @@ state.winStart = winStart;
       const tickEl=ticks.children[todayU]; if(tickEl) tickEl.classList.add("today");
       const line=document.createElement("div"); line.className="todayLine"; line.style.left=(todayU*unitW)+"px"; ticks.appendChild(line);
       const line2=document.createElement("div"); line2.className="todayLine"; line2.style.left=(todayU*unitW)+"px"; lanes.appendChild(line2);
-    }
+    renderNonWorkOverlay(lanes, winStart, unitCount, unitW);
+}
 
     for(const t of tasks){
       const lane=document.createElement("div"); lane.className="lane";
@@ -1220,14 +1320,15 @@ state.winStart = winStart;
         const stops=[];
         for(let i=0;i<unitCount;i++){
           const ts=addUnits(winStart,i);
-          const a=((i/unitCount)*100).toFixed(4);
-          const b=(((i+1)/unitCount)*100).toFixed(4);
-          const c=isNonWork(ts) ? "var(--offcell2)" : "transparent";
-          stops.push(`${c} ${a}% ${b}%`);
+          const a = (i * unitW);
+          const b = ((i + 1) * unitW);
+          // 假日區隔：僅依台灣國定假日/連假資料（含過年、連假等），不以週末判斷
+          const c = "transparent"; // non-work painted by overlay
+          stops.push(`${c} ${a}px ${b}px`);
         }
-        lane.style.backgroundImage = `linear-gradient(90deg, ${stops.join(", ")}), linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px)`;
-        lane.style.backgroundSize = `100% 100%, ${unitW}px 100%`;
-      }
+        lane.style.backgroundImage = `linear-gradient(to right, #2d3346 1px, transparent 1px)`;
+        lane.style.backgroundSize = `${unitW}px 100%`;
+}
 
       const startStr=normalizeDateInputValue(t.start);
       let endStr=normalizeDateInputValue(t.end);
@@ -1250,6 +1351,13 @@ state.winStart = winStart;
         taskById.set(t.id, t);
         barElById.set(t.id, bar);
         bar.style.left=left+"px";
+        // 讓bar內的格線與全域日期格線對齊（不提高z-index）
+        try{
+          const ux = state.unitW||28;
+          const offPx = ((-left)%ux+ux)%ux;
+          bar.style.backgroundPosition = `${offPx}px 0px`;
+        }catch(e){}
+
         bar.style.width=width+"px";
 
         const projColor=projectMeta.get(getTaskProjectId(t)||"")?.color || "var(--bar)";
