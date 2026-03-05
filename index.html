@@ -18,6 +18,7 @@
       --offbar: rgba(200,210,255,0.35);
       --splitw:10px;
       --leftw:520px;
+      --ganttLeftW:320px;
       --unitw:28px;
       --rowh:34px;
       --topbarh:56px;
@@ -141,7 +142,56 @@
       background:#2c3349;
       flex-wrap:wrap;
     }
-    .gantt{ position:relative; overflow:auto; flex:1 1 auto; }
+    /* Gantt split layout: frozen left column + scrollable right */
+    .gantt{ position:relative; flex:1 1 auto; overflow:hidden; display:flex; min-height:0; }
+    .ganttLeft{
+      flex:0 0 var(--ganttLeftW);
+      width:var(--ganttLeftW);
+      border-right:1px solid var(--line);
+      background:var(--panel2);
+      overflow:auto;
+      /* allow long text; users can horizontally scroll instead of truncation */
+      overflow-x:auto;
+    }
+    .ganttVSplitter{
+      width:8px;
+      flex:0 0 8px;
+      cursor:col-resize;
+      background:transparent;
+      position:relative;
+    }
+    .ganttVSplitter::before{
+      content:"";
+      position:absolute;
+      top:10px; bottom:10px; left:3px;
+      width:2px;
+      border-radius:4px;
+      background:rgba(255,255,255,0.14);
+    }
+        .ganttLeftTop{
+      /* spacer to align with date ticks; scrolls together with timeline (NOT sticky) */
+      height:56px; /* overridden by JS to match ticks height */
+      border-bottom:1px solid rgba(255,255,255,0.10);
+      background:transparent;
+    }
+    .ganttLeftRow{
+      height:var(--rowh);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:0 10px;
+      border-bottom:1px solid #2d3346;
+      white-space:nowrap;
+      /* do not truncate; let ganttLeft scroll horizontally */
+      overflow:visible;
+      font-size:12px;
+      color:var(--text);
+    }
+    .ganttLeftRow .proj{ font-weight:800; margin-right:8px; }
+    .ganttLeftRow .task{ color:var(--text); opacity:0.95; }
+
+    .ganttRight{ flex:1 1 auto; overflow:auto; min-width:0; }
+
     .ticks{
       position:relative;
       display:flex;
@@ -575,9 +625,13 @@ position:absolute;
           <div class="muted" style="font-size:12px;">拖曳 bar：移動日期；拉左右把手：改 Start/End（日尺度下週末/假日會灰化）。</div>
         </div>
 
-        <div class="gantt">
-          <div class="ticks" id="ticks"></div>
-          <div class="lanes" id="lanes"></div>
+        <div class="gantt" id="ganttWrap">
+          <div class="ganttLeft" id="ganttLeft"></div>
+          <div class="ganttVSplitter" id="ganttVSplitter" title="拖曳調整左側寬度"></div>
+          <div class="ganttRight" id="ganttRight">
+            <div class="ticks" id="ticks"></div>
+            <div class="lanes" id="lanes"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -825,6 +879,29 @@ const firebaseConfig = {
     });
     sp.addEventListener("pointerup",()=>dragging=false);
   })();
+
+  // gantt vertical splitter (frozen left column width)
+  (function initGanttSplitter(){
+    const sp=$("ganttVSplitter");
+    const left=$("ganttLeft");
+    if(!sp || !left) return;
+    let dragging=false, startX=0, startW=320;
+    sp.addEventListener("pointerdown",(e)=>{
+      dragging=true; startX=e.clientX;
+      startW=parseInt(getComputedStyle(document.documentElement).getPropertyValue("--ganttLeftW"))||320;
+      sp.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    sp.addEventListener("pointermove",(e)=>{
+      if(!dragging) return;
+      const dx=e.clientX-startX;
+      const w=Math.max(220, Math.min(720, startW+dx));
+      document.documentElement.style.setProperty("--ganttLeftW", w+"px");
+    });
+    sp.addEventListener("pointerup",()=>dragging=false);
+  })();
+
+
   // collapse
   (function initCollapse(){
     const layout=$("layout"), btnC=$("collapseBtn"), btnE=$("expandFloating");
@@ -1020,7 +1097,7 @@ async function jumpToToday(){
   // Keep preset as-is; rerender updates winStart/unitW and the visible window.
   await rerender();
   // After rerender, scroll gantt container so today is visible.
-  const ganttEl = document.querySelector(".gantt");
+  const ganttEl = document.getElementById("ganttRight");
   if(!ganttEl || !state.winStart || !state.unitW) return;
   const today = startOfDay(Date.now());
   const daysFromStart = Math.round((today - state.winStart)/dayMs);
@@ -1194,7 +1271,9 @@ $("addBtn").addEventListener("click", async ()=>{
   async function renderGantt(tasks, token){
     if(token!=null && token!==state.renderToken) return;
     const ticks=$("ticks"), lanes=$("lanes");
+    const ganttLeft=$("ganttLeft");
     ticks.innerHTML=""; lanes.innerHTML="";
+    if(ganttLeft){ ganttLeft.innerHTML=""; }
     barElById.clear();
     taskById.clear();
     // link layer
@@ -1292,6 +1371,13 @@ state.winStart = winStart;
     ticks.style.minWidth = (unitCount*unitW)+"px";
     lanes.style.minWidth = (unitCount*unitW)+"px";
 
+    // Frozen left column: top spacer to align with tick header
+    if(ganttLeft){
+      const top=document.createElement("div");
+      top.className="ganttLeftTop";
+      ganttLeft.appendChild(top);
+    }
+
     for(let i=0;i<unitCount;i++){
       const ts=addUnits(winStart,i);
       const el=document.createElement("div"); el.className="tick";
@@ -1305,6 +1391,15 @@ state.winStart = winStart;
       ticks.appendChild(el);
     }
 
+    // Align frozen left header height with ticks height
+    if(ganttLeft){
+      const top=ganttLeft.querySelector(".ganttLeftTop");
+      if(top){
+        // defer to next frame to ensure layout is measured correctly
+        requestAnimationFrame(()=>{ top.style.height = ticks.offsetHeight + "px"; });
+      }
+    }
+
     const todayTs=alignStart(startOfDay(Date.now()));
     const todayU=unitsBetween(winStart, todayTs);
     if(todayU>=0 && todayU<unitCount){
@@ -1316,6 +1411,18 @@ state.winStart = winStart;
 
     for(const t of tasks){
       const lane=document.createElement("div"); lane.className="lane";
+
+      // Frozen left column row (Project + Task title; no assignee)
+      if(ganttLeft){
+        const row=document.createElement("div");
+        row.className="ganttLeftRow";
+        const pid=getTaskProjectId(t)||"";
+        const proj=document.createElement("span"); proj.className="proj"; proj.textContent = pid || "(No Project)";
+        const title=document.createElement("span"); title.className="task"; title.textContent = t.title || "";
+        row.appendChild(proj);
+        row.appendChild(title);
+        ganttLeft.appendChild(row);
+      }
       if(state.scale==="day"){
         const stops=[];
         for(let i=0;i<unitCount;i++){
@@ -2001,9 +2108,23 @@ $("memberUpsert").addEventListener("click", async ()=>{
 
     // keep link layer aligned
     window.addEventListener("resize", ()=>{ renderLinks(); });
-    const ganttEl=document.querySelector(".gantt");
+    const ganttEl=document.getElementById("ganttRight");
     if(ganttEl){
-      ganttEl.addEventListener("scroll", ()=>{ renderLinks(); }, { passive:true });
+      // keep link layer aligned (horizontal/vertical scrolling happens in ganttRight)
+      ganttEl.addEventListener("scroll", ()=>{
+        // sync frozen left column vertical scroll
+        const left=document.getElementById("ganttLeft");
+        if(left && left.scrollTop !== ganttEl.scrollTop) left.scrollTop = ganttEl.scrollTop;
+        renderLinks();
+      }, { passive:true });
+
+      // also allow wheel/drag scrolling on left column to control the right panel's vertical scroll
+      const left=document.getElementById("ganttLeft");
+      if(left){
+        left.addEventListener("scroll", ()=>{
+          if(ganttEl.scrollTop !== left.scrollTop) ganttEl.scrollTop = left.scrollTop;
+        }, { passive:true });
+      }
     }
   })();
 
