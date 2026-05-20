@@ -10,7 +10,6 @@
       --panel: #0c1220;
       --panel2: #101827;
       --card: #111a2d;
-      --card2: #0f1728;
       --text: #f8fafc;
       --muted: #94a3b8;
       --soft: #cbd5e1;
@@ -23,8 +22,8 @@
       --red: #fb7185;
       --purple: #a78bfa;
       --left: 390px;
-      --day: 42px;
-      --rowh: 118px;
+      --day: 45px;
+      --rowh: 126px;
       --radius: 18px;
       --shadow: 0 24px 70px rgba(0,0,0,.44);
       font-family: Inter, "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, sans-serif;
@@ -78,7 +77,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
+      gap: 10px;
       padding: 12px 22px;
       background: rgba(7,10,18,.82);
       border-bottom: 1px solid var(--line);
@@ -123,15 +122,22 @@
 
     .toolbar {
       display: flex;
-      align-items: end;
+      align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding: 16px 22px;
+      gap: 14px;
+      padding: 10px 16px;
       background: rgba(12,18,32,.72);
       border-bottom: 1px solid var(--line);
       backdrop-filter: blur(12px);
     }
-    .toolbar-left { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+    .toolbar-left {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
     .field { display: grid; gap: 6px; }
     .field label { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
     .field input, .field select {
@@ -148,20 +154,114 @@
       box-shadow: 0 0 0 3px rgba(96,165,250,.13);
     }
 
+    .filters { display: none; }
+    .filter-chip, .legend-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: #dbeafe;
+      background: rgba(15,23,42,.42);
+      border: 1px solid rgba(148,163,184,.12);
+      font-size: 11px;
+      font-weight: 820;
+      user-select: none;
+      line-height: 1;
+      min-height: 24px;
+      white-space: nowrap;
+      flex: 0 0 auto;
+      transition: all .12s ease;
+    }
+    .legend-chip:hover {
+      transform: translateY(-1px);
+      border-color: rgba(96,165,250,.36);
+      background: linear-gradient(180deg, rgba(37,99,235,.22), rgba(15,23,42,.96));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.04),
+        0 14px 28px rgba(37,99,235,.16);
+    }
+    .legend-chip.is-off {
+      opacity: .45;
+      filter: grayscale(.45);
+      box-shadow: none;
+    }
+    .legend-chip.is-active {
+      border-color: rgba(96,165,250,.42);
+      background: linear-gradient(180deg, rgba(37,99,235,.24), rgba(15,23,42,.96));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.05),
+        0 16px 32px rgba(37,99,235,.18);
+    }
+    .legend-chip input {
+      width: 14px;
+      height: 14px;
+      accent-color: #60a5fa;
+      margin: 0;
+      flex: none;
+    }
+    .legend-chip.is-off {
+      opacity: .46;
+      filter: grayscale(.5);
+    }
+    .legend {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      align-items: center;
+      max-width: 100%;
+      width: 100%;
+      height: 68px;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+      white-space: nowrap;
+    }
+    .member-filter-field {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 100%;
+      display: flex;
+      align-items: center;
+      height: 68px;
+    }
+    .legend-title {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 950;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-right: 2px;
+      white-space: nowrap;
+      padding: 0 2px;
+    }
+    .color-dot-sm {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      box-shadow: 0 0 0 2px rgba(255,255,255,.06);
+      flex: none;
+    }
+
     .summary {
       display: grid;
-      grid-template-columns: repeat(4, minmax(105px, 1fr));
-      gap: 10px;
-      min-width: min(650px, 100%);
+      grid-template-columns: repeat(4, minmax(72px, 1fr));
+      gap: 8px;
+      min-width: min(430px, 100%);
+      flex: 0 0 auto;
     }
     .summary-card {
-      padding: 10px 12px;
-      border-radius: 16px;
+      padding: 8px 10px;
+      border-radius: 14px;
       background: linear-gradient(180deg, rgba(30,41,59,.88), rgba(15,23,42,.88));
       border: 1px solid rgba(148,163,184,.17);
     }
     .summary-card .label { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .05em; }
-    .summary-card .value { margin-top: 4px; font-size: 21px; font-weight: 1000; color: var(--text); }
+    .summary-card .value { margin-top: 3px; font-size: 18px; font-weight: 1000; color: var(--text); }
     .summary-card .value.over { color: var(--red); }
 
     .board {
@@ -174,7 +274,7 @@
     }
     .scroll {
       overflow: auto;
-      max-height: calc(100vh - 200px);
+      max-height: calc(100vh - 214px);
     }
     .grid {
       display: grid;
@@ -235,6 +335,8 @@
       border-right-color: rgba(226,232,240,.56);
       border-bottom-color: rgba(226,232,240,.34);
     }
+    .project.archived { opacity: .58; filter: grayscale(.25); }
+    .project.archived .project-title { color: #cbd5e1; }
     .project-title {
       display: flex;
       align-items: center;
@@ -261,6 +363,23 @@
       color: #cbd5e1;
       font-size: 12px;
       font-weight: 750;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #fed7aa;
+      background: rgba(251, 146, 60, .13);
+      border: 1px solid rgba(251, 146, 60, .28);
+      font-size: 11px;
+      font-weight: 950;
+    }
+    .readonly-note {
+      margin-top: 8px;
+      color: #fbbf24;
+      font-size: 12px;
+      font-weight: 850;
     }
     .progress-line {
       display: grid;
@@ -304,7 +423,9 @@
     .day-cell {
       position: relative;
       min-height: var(--rowh);
-      background: linear-gradient(180deg, rgba(15,23,42,.97), rgba(15,23,42,.90));
+      background:
+        linear-gradient(180deg, rgba(15,23,42,.97), rgba(15,23,42,.90)),
+        linear-gradient(180deg, transparent 33%, rgba(226,232,240,.06) 33%, rgba(226,232,240,.06) 34%, transparent 34%, transparent 66%, rgba(226,232,240,.06) 66%, rgba(226,232,240,.06) 67%, transparent 67%);
       box-shadow: inset 1px 0 0 rgba(255,255,255,.03);
       transition: background .12s ease, box-shadow .12s ease;
       cursor: pointer;
@@ -329,7 +450,8 @@
       font-weight: 1000;
       pointer-events: none;
     }
-    .day-cell.nonwork {
+    .day-cell.nonwork,
+    .day-cell.archived {
       cursor: not-allowed;
       background: rgba(15,23,42,.48);
     }
@@ -340,19 +462,57 @@
       background: repeating-linear-gradient(135deg, rgba(148,163,184,.10) 0, rgba(148,163,184,.10) 4px, transparent 4px, transparent 10px);
       pointer-events: none;
     }
+    .day-cell.archived:hover {
+      box-shadow: none;
+      background: rgba(15,23,42,.58);
+    }
+    .day-cell.archived:hover::before {
+      display: none;
+      content: "";
+    }
     .day-cell.today {
       background: rgba(37,99,235,.18);
       box-shadow: inset 0 0 0 1px rgba(96,165,250,.42);
     }
+    .event-dot {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      top: 18px;
+      z-index: 7;
+      height: 24px;
+      padding: 0 5px;
+      border-radius: 999px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 1000;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      box-shadow: 0 12px 22px rgba(245, 158, 11, .24);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .event-dot.progress {
+      background: linear-gradient(135deg, #22c55e, #0ea5e9);
+      box-shadow: 0 12px 22px rgba(34,197,94,.22);
+    }
     .chip {
       position: absolute;
-      left: 5px;
-      right: 5px;
+      left: 6px;
+      right: 6px;
       top: 50%;
       transform: translateY(-50%);
       z-index: 5;
+      height: 28px;
       border-radius: 999px;
-      padding: 6px 4px;
+      padding: 0 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       text-align: center;
       color: white;
       font-size: 12px;
@@ -362,6 +522,26 @@
       box-shadow: 0 12px 22px rgba(37,99,235,.36);
     }
     .chip:active { cursor: grabbing; }
+    .end-badge {
+      position: absolute;
+      left: 7px;
+      right: 7px;
+      bottom: 14px;
+      z-index: 4;
+      height: 22px;
+      padding: 0 4px;
+      border-radius: 8px;
+      color: #fff;
+      background: #dc2626;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 1000;
+      letter-spacing: .06em;
+      box-shadow: 0 8px 18px rgba(220, 38, 38, .30);
+    }
 
     .empty {
       display: none;
@@ -424,6 +604,38 @@
       padding: 16px 20px;
       border-top: 1px solid var(--line);
     }
+
+
+    .hour-form {
+      width: min(420px, calc(100vw - 28px));
+    }
+    .hour-form .modal-body {
+      gap: 14px;
+    }
+
+    .event-form {
+      width: min(420px, calc(100vw - 28px));
+    }
+    .event-form .modal-body {
+      gap: 14px;
+    }
+    .event-form textarea {
+      width: 100%;
+      min-height: 94px;
+      resize: vertical;
+      padding: 10px 11px;
+      border-radius: 12px;
+      color: var(--text);
+      background: rgba(15,23,42,.86);
+      border: 1px solid var(--line2);
+      outline: none;
+      font: inherit;
+    }
+    .event-form textarea:focus {
+      border-color: rgba(96,165,250,.85);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.13);
+    }
+
     .toast {
       position: fixed;
       right: 18px;
@@ -440,11 +652,12 @@
     }
 
     @media (max-width: 900px) {
-      :root { --left: 320px; --day: 38px; --rowh: 120px; }
+      :root { --left: 320px; --day: 41px; --rowh: 126px; }
       .toolbar { align-items: stretch; flex-direction: column; }
       .summary { grid-template-columns: repeat(2, minmax(0,1fr)); min-width: 0; }
       .form-grid, .modal-stat { grid-template-columns: 1fr; }
       .project-title { font-size: 18px; }
+      .legend { max-width: none; }
     }
   </style>
 </head>
@@ -468,7 +681,7 @@
 
   <section id="loginScreen" class="login">
     <h2>登入後查看你的配置看板</h2>
-    <p>管理者可查看所有專案；組員只會看到指派給自己的專案。試算表只同步專案與總時數，每日工時配置會獨立保存在 Firestore，不會被同步清除。</p>
+    <p>管理者可查看所有專案；組員只會看到指派給自己的專案。試算表只同步專案與總時數，每日工時配置、會議與進度會獨立保存在 Firestore。</p>
     <button id="loginBtn2" type="button">使用 Google 登入</button>
   </section>
 
@@ -479,15 +692,12 @@
           <label>月份</label>
           <input id="monthPicker" type="month">
         </div>
-        <div class="field">
-          <label>顯示範圍</label>
-          <select id="viewMode">
-            <option value="my">只看我的</option>
-            <option value="all">全部專案</option>
-          </select>
-        </div>
+
         <button id="prevMonthBtn" class="ghost" type="button">上個月</button>
         <button id="nextMonthBtn" class="ghost" type="button">下個月</button>
+        <div class="member-filter-field">
+          <div id="legend" class="legend"></div>
+        </div>
       </div>
 
       <div class="summary">
@@ -547,6 +757,69 @@
     </form>
   </dialog>
 
+
+
+  <dialog id="hourDialog" class="hour-form">
+    <form id="hourForm" method="dialog">
+      <div class="modal-head">
+        <h3 id="hourModalTitle">配置工時</h3>
+        <button id="closeHourBtn" type="button" class="ghost">關閉</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>日期</label>
+            <input id="hourDateInput" type="date" required>
+          </div>
+          <div class="field">
+            <label>工時</label>
+            <input id="hourValueInput" type="number" min="0" step="0.5" placeholder="例如 2">
+          </div>
+        </div>
+        <div class="modal-stat">
+          <div><span>總時數</span><b id="hourTotal">0h</b></div>
+          <div><span>目前已配</span><b id="hourUsed">0h</b></div>
+          <div><span>儲存後剩餘</span><b id="hourLeft">0h</b></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="clearHourBtn" type="button" class="danger">清除當日</button>
+        <button id="saveHourBtn" type="button">儲存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="eventDialog" class="event-form">
+    <form id="eventForm" method="dialog">
+      <div class="modal-head">
+        <h3 id="eventModalTitle">新增事件</h3>
+        <button id="closeEventBtn" type="button" class="ghost">關閉</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>類型</label>
+          <select id="eventTypeInput">
+            <option value="會議">會議</option>
+            <option value="進度">進度</option>
+            <option value="自填">自填</option>
+          </select>
+        </div>
+        <div class="field" id="customTypeWrap" style="display:none;">
+          <label>自填類型</label>
+          <input id="customTypeInput" type="text" placeholder="例如：送審、待確認、風險">
+        </div>
+        <div class="field">
+          <label>簡述</label>
+          <textarea id="eventTextInput" placeholder="輸入簡述，滑鼠移過事件圈圈時會顯示"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="deleteEventBtn" type="button" class="danger" style="display:none;">刪除</button>
+        <button id="saveEventBtn" type="button">儲存</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="toast" class="toast"></div>
 
   <script type="module">
@@ -585,6 +858,11 @@
       measurementId: "G-50JW2WYDN2"
     };
 
+    const MEMBER_COLORS = [
+      "#38bdf8", "#f472b6", "#a78bfa", "#34d399", "#fbbf24",
+      "#fb7185", "#22d3ee", "#818cf8", "#4ade80", "#f97316"
+    ];
+
     const app = initializeApp(firebaseConfig);
     isSupported().then(ok => ok && getAnalytics(app)).catch(() => {});
     const auth = getAuth(app);
@@ -604,7 +882,12 @@
       holidays: new Map(),
       month: new Date(),
       selectedTask: null,
-      allocationDrag: null
+      allocationDrag: null,
+      eventDrag: null,
+      editingEvent: null,
+      editingHour: null,
+      selectedAssignees: new Set(["__ALL__"]),
+      memberColorMap: new Map()
     };
 
     $("loginBtn").addEventListener("click", login);
@@ -612,7 +895,6 @@
     $("logoutBtn").addEventListener("click", () => signOut(auth));
     $("prevMonthBtn").addEventListener("click", () => shiftMonth(-1));
     $("nextMonthBtn").addEventListener("click", () => shiftMonth(1));
-    $("viewMode").addEventListener("change", subscribeTasks);
     $("monthPicker").addEventListener("change", (e) => {
       const [y, m] = e.target.value.split("-").map(Number);
       state.month = new Date(y, m - 1, 1);
@@ -627,6 +909,21 @@
       updateModalStats();
     });
     $("saveProjectBtn").addEventListener("click", saveProject);
+
+    $("hourForm").addEventListener("submit", (e) => e.preventDefault());
+    $("closeHourBtn").addEventListener("click", () => $("hourDialog").close());
+    $("hourValueInput").addEventListener("input", updateHourDialogStats);
+    $("hourDateInput").addEventListener("change", updateHourDialogStats);
+    $("saveHourBtn").addEventListener("click", saveHourFromDialog);
+    $("clearHourBtn").addEventListener("click", clearHourFromDialog);
+
+    $("eventForm").addEventListener("submit", (e) => e.preventDefault());
+    $("closeEventBtn").addEventListener("click", () => $("eventDialog").close());
+    $("eventTypeInput").addEventListener("change", () => {
+      $("customTypeWrap").style.display = $("eventTypeInput").value === "自填" ? "" : "none";
+    });
+    $("saveEventBtn").addEventListener("click", saveEventFromDialog);
+    $("deleteEventBtn").addEventListener("click", deleteEventFromDialog);
 
     getRedirectResult(auth).catch(err => toast("Redirect 登入失敗：" + err.message));
 
@@ -658,6 +955,7 @@
         state.tasks = [];
         state.holidays = new Map();
         state.isAdmin = false;
+        state.selectedAssignees = new Set(["__ALL__"]);
         $("main").style.display = "none";
         $("loginScreen").style.display = "";
         $("loginBtn").style.display = "";
@@ -691,8 +989,6 @@
       state.isAdmin = state.role === "admin";
       $("roleBadge").textContent = state.isAdmin ? "管理者" : "組員";
       $("roleBadge").style.display = "inline-flex";
-      $("viewMode").value = state.isAdmin ? "all" : "my";
-      $("viewMode").disabled = !state.isAdmin;
     }
 
     function setDefaultMonth() {
@@ -723,13 +1019,16 @@
       if (!state.user) return;
       if (state.unsubTasks) state.unsubTasks();
 
-      const mode = state.isAdmin ? $("viewMode").value : "my";
-      const q = mode === "my"
-        ? query(collection(db, "ganttTasks"), where("assigneeEmail", "==", state.user.email))
-        : query(collection(db, "ganttTasks"));
+      const q = state.isAdmin
+        ? query(collection(db, "ganttTasks"))
+        : query(collection(db, "ganttTasks"), where("assigneeEmail", "==", state.user.email));
 
       state.unsubTasks = onSnapshot(q, (snap) => {
         state.tasks = snap.docs.map(d => normalizeTask(d.id, d.data()));
+        buildMemberColors();
+        reconcileFilters();
+        renderFilters();
+        renderLegend();
         render();
       }, (err) => {
         console.error(err);
@@ -755,8 +1054,95 @@
         startDate: data.startDate || todayKey(),
         endDate: data.endDate || defaultEndDate(),
         enabledMonth: data.enabledMonth || "",
-        allocations: data.allocations || {}
+        allocations: data.allocations || {},
+        events: data.events || {},
+        archived: String(data.status || "").trim() !== "未開發"
       };
+    }
+
+    function buildMemberColors() {
+      const assignees = uniqueAssignees();
+      const previous = new Map(state.memberColorMap);
+      state.memberColorMap = new Map();
+
+      assignees.forEach((name, index) => {
+        state.memberColorMap.set(name, previous.get(name) || MEMBER_COLORS[index % MEMBER_COLORS.length]);
+      });
+    }
+
+    function uniqueAssignees() {
+      return [...new Set(
+        state.tasks
+          .filter(task => String(task.status || "").trim() === "未開發")
+          .map(task => assigneeKey(task))
+          .filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b));
+    }
+
+    function reconcileFilters() {
+      if (!state.isAdmin) {
+        state.selectedAssignees = new Set(["__ALL__"]);
+        return;
+      }
+
+      const valid = new Set(uniqueAssignees());
+      if (state.selectedAssignees.has("__ALL__")) return;
+
+      const next = new Set([...state.selectedAssignees].filter(v => valid.has(v)));
+      if (!next.size) next.add("__ALL__");
+      state.selectedAssignees = next;
+    }
+
+    function renderFilters() {
+      // 顯示範圍已合併到「成員色彩 / 篩選」。
+    }
+
+    function renderLegend() {
+      const el = $("legend");
+      el.innerHTML = "";
+
+      if (!state.isAdmin) {
+        const name = uniqueAssignees()[0] || "我的專案";
+        const chip = document.createElement("span");
+        chip.className = "legend-chip";
+        chip.innerHTML = `<span class="color-dot-sm" style="background:${escapeAttr(memberColor(name))}"></span>${escapeHtml(name)}`;
+        el.appendChild(chip);
+        return;
+      }
+
+      const allChip = document.createElement("label");
+      allChip.className = "legend-chip " + (state.selectedAssignees.has("__ALL__") ? "is-active" : "is-off");
+      allChip.innerHTML = `<input type="checkbox" value="__ALL__" ${state.selectedAssignees.has("__ALL__") ? "checked" : ""}>全部`;
+      el.appendChild(allChip);
+
+      uniqueAssignees().forEach(name => {
+        const color = memberColor(name);
+        const checked = state.selectedAssignees.has("__ALL__") || state.selectedAssignees.has(name);
+        const chip = document.createElement("label");
+        chip.className = "legend-chip " + (checked ? "is-active" : "is-off");
+        chip.innerHTML = `
+          <input type="checkbox" value="${escapeAttr(name)}" ${checked ? "checked" : ""}>
+          <span class="color-dot-sm" style="background:${escapeAttr(color)}"></span>
+          ${escapeHtml(name)}
+        `;
+        el.appendChild(chip);
+      });
+
+      el.querySelectorAll("input").forEach(input => {
+        input.addEventListener("change", () => {
+          if (input.value === "__ALL__") {
+            state.selectedAssignees = input.checked ? new Set(["__ALL__"]) : new Set();
+          } else {
+            state.selectedAssignees.delete("__ALL__");
+            if (input.checked) state.selectedAssignees.add(input.value);
+            else state.selectedAssignees.delete(input.value);
+            if (!state.selectedAssignees.size) state.selectedAssignees.add("__ALL__");
+          }
+
+          renderLegend();
+          render();
+        });
+      });
     }
 
     function render() {
@@ -766,7 +1152,9 @@
       grid.innerHTML = "";
 
       const visible = state.tasks
+        .filter(t => String(t.status || "").trim() === "未開發")
         .filter(t => touchesMonth(t, state.month))
+        .filter(t => filterAllowsTask(t))
         .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)) || a.projectName.localeCompare(b.projectName));
 
       $("empty").style.display = visible.length ? "none" : "block";
@@ -797,6 +1185,13 @@
       });
     }
 
+    function filterAllowsTask(task) {
+      if (!state.isAdmin) return true;
+      if (state.selectedAssignees.has("__ALL__")) return true;
+      const key = assigneeKey(task);
+      return key ? state.selectedAssignees.has(key) : state.selectedAssignees.has("__ALL__");
+    }
+
     function renderSummary(tasks) {
       const total = tasks.reduce((s, t) => s + t.totalHours, 0);
       const used = tasks.reduce((s, t) => s + usedHours(t), 0);
@@ -814,7 +1209,7 @@
       const pct = task.totalHours ? Math.round(used / task.totalHours * 100) : 0;
 
       const div = document.createElement("div");
-      div.className = "project";
+      div.className = "project" + (task.archived ? " archived" : "");
       div.dataset.taskId = task.id;
       div.innerHTML = `
         <div class="project-title">
@@ -822,8 +1217,9 @@
           <span>${escapeHtml(task.projectName)}</span>
         </div>
         <div class="project-meta">
-          <span>${escapeHtml(task.assigneeName || task.assigneeEmail || "-")}</span>
+          <span>${escapeHtml(displayAssignee(task))}</span>
           <span>${escapeHtml(task.startDate)} ～ ${escapeHtml(task.endDate)}</span>
+          ${task.archived ? `<span class="status-badge">${escapeHtml(task.status || "已封存")}</span>` : ""}
         </div>
         <div class="progress-line" title="總 ${task.totalHours}h / 已配 ${used}h / 剩 ${left}h">
           <div class="track"><div class="fill ${left < 0 ? "over" : ""}" style="width:${Math.min(100, Math.max(0, pct))}%"></div></div>
@@ -834,9 +1230,14 @@
           <span>已配 <b>${used}h</b></span>
           <span class="${left < 0 ? "over" : "left"}">剩 <b>${left}h</b></span>
         </div>
-        <div class="actions"><button type="button" class="secondary">配置工時</button></div>
+        <div class="actions">
+          ${task.archived
+            ? `<span class="readonly-note">已封存，保留配置紀錄但不可編輯</span>`
+            : `<button type="button" class="secondary">配置工時</button>`}
+        </div>
       `;
-      div.querySelector("button").addEventListener("click", () => openProjectModal(task));
+      const btn = div.querySelector("button");
+      if (btn) btn.addEventListener("click", () => openProjectModal(task));
       return div;
     }
 
@@ -844,12 +1245,37 @@
       const date = dateKey(d);
       const label = getNonWorkLabel(d);
       const cell = document.createElement("div");
-      cell.className = "day-cell" + (isToday(d) ? " today" : "") + (label ? " nonwork" : "");
+      cell.className =
+        "day-cell"
+        + (isToday(d) ? " today" : "")
+        + (label ? " nonwork" : "")
+        + (task.archived ? " archived" : "");
       cell.dataset.date = date;
-      cell.title = label ? `${label}：不可配置` : `${date} 點擊配置工時`;
+      cell.title = label ? `${label}：不可配置` : `${date} 點擊配置工時，右鍵新增會議/進度`;
 
-      if (!label) {
+      if (!label && !task.archived) {
         cell.addEventListener("click", () => quickSetHours(task, date));
+        cell.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          addEventNote(task, date);
+        });
+      }
+
+      const eventItems = Array.isArray(task.events?.[date]) ? task.events[date] : [];
+      if (eventItems.length) {
+        const eventDot = document.createElement("div");
+        const first = eventItems[0] || {};
+        eventDot.className = "event-dot" + (first.type === "進度" ? " progress" : "");
+        eventDot.textContent = eventItems.length > 1 ? `${first.type || "事件"} +${eventItems.length - 1}` : (first.type || "事件");
+        eventDot.title = eventItems.map(item => `${item.type || "事件"}：${item.text || ""}`).join("\n");
+        eventDot.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!task.archived) openEventDialog({ task, date, index: 0 });
+        });
+        if (!task.archived) {
+          eventDot.addEventListener("pointerdown", (e) => startEventDrag(e, task, date, 0));
+        }
+        cell.appendChild(eventDot);
       }
 
       const h = number(task.allocations?.[date]);
@@ -857,39 +1283,310 @@
         const chip = document.createElement("div");
         chip.className = "chip";
         chip.textContent = `${h}h`;
-        chip.style.background = chipGradient(h);
+        chip.style.background = chipGradient(task);
+        chip.title = "點一下修改當日工時；拖拉可移動日期";
         chip.addEventListener("click", (e) => {
           e.stopPropagation();
-          openProjectModal(task);
+          if (!task.archived) editSingleDayHours(task, date);
         });
-        chip.addEventListener("pointerdown", (e) => startAllocationDrag(e, task, date, h));
+        if (!task.archived) {
+          chip.addEventListener("pointerdown", (e) => startAllocationDrag(e, task, date, h));
+        }
         cell.appendChild(chip);
+      }
+
+      if (date === task.endDate) {
+        const end = document.createElement("div");
+        end.className = "end-badge";
+        end.textContent = "END";
+        cell.appendChild(end);
       }
 
       return cell;
     }
 
-    async function quickSetHours(task, date) {
+    function quickSetHours(task, date) {
+      openHourDialog(task, date);
+    }
+
+    function openHourDialog(task, date) {
+      if (task.archived) {
+        toast("此專案已封存，不可配置工時");
+        return;
+      }
+
       if (isNonWorkDate(date)) {
         toast("六日或國定假日不可配置工時");
         return;
       }
 
-      const current = number(task.allocations?.[date]);
-      const input = prompt(`${date} 要配置幾小時？\n輸入 0 可清除當天工時。`, current || "");
-      if (input === null) return;
+      state.editingHour = { taskId: task.id, date };
 
-      const h = Number(input);
-      if (!Number.isFinite(h) || h < 0) {
-        toast("請輸入有效小時數");
+      const current = number(task.allocations?.[date]);
+      $("hourModalTitle").textContent = current > 0 ? `修改工時｜${date}` : `新增工時｜${date}`;
+      $("hourDateInput").value = date;
+      $("hourValueInput").value = current > 0 ? current : "";
+      $("clearHourBtn").style.display = current > 0 ? "" : "none";
+      updateHourDialogStats();
+
+      $("hourDialog").showModal();
+    }
+
+    function updateHourDialogStats() {
+      const edit = state.editingHour;
+      if (!edit) return;
+
+      const task = state.tasks.find(t => t.id === edit.taskId);
+      if (!task) return;
+
+      const originalDate = edit.date;
+      const nextDate = $("hourDateInput").value || originalDate;
+      const nextHours = number($("hourValueInput").value);
+
+      const allocations = { ...(task.allocations || {}) };
+      delete allocations[originalDate];
+      if (nextDate && nextHours > 0) allocations[nextDate] = nextHours;
+
+      const used = Object.values(allocations).reduce((sum, h) => sum + number(h), 0);
+      const left = task.totalHours - used;
+
+      $("hourTotal").textContent = `${task.totalHours}h`;
+      $("hourUsed").textContent = `${used}h`;
+      $("hourLeft").textContent = `${left}h`;
+      $("hourLeft").style.color = left < 0 ? "var(--red)" : "var(--green)";
+    }
+
+    async function saveHourFromDialog() {
+      const edit = state.editingHour;
+      if (!edit) return;
+
+      const task = state.tasks.find(t => t.id === edit.taskId);
+      if (!task) return;
+
+      const nextDate = $("hourDateInput").value;
+      const nextHours = number($("hourValueInput").value);
+
+      if (!nextDate) {
+        toast("請選擇日期");
+        return;
+      }
+
+      if (isNonWorkDate(nextDate)) {
+        toast("六日或國定假日不可配置工時");
+        return;
+      }
+
+      if (nextHours <= 0) {
+        toast("請輸入大於 0 的工時；若要刪除請按清除當日");
         return;
       }
 
       const allocations = { ...(task.allocations || {}) };
-      if (h === 0) delete allocations[date];
-      else allocations[date] = h;
+      delete allocations[edit.date];
+      allocations[nextDate] = nextHours;
 
-      await saveAllocations(task, allocations, "已快速更新工時");
+      await saveAllocations(task, allocations, "已儲存工時");
+      $("hourDialog").close();
+    }
+
+    async function clearHourFromDialog() {
+      const edit = state.editingHour;
+      if (!edit) return;
+
+      const task = state.tasks.find(t => t.id === edit.taskId);
+      if (!task) return;
+
+      const allocations = { ...(task.allocations || {}) };
+      delete allocations[edit.date];
+
+      await saveAllocations(task, allocations, "已清除當日工時");
+      $("hourDialog").close();
+    }
+
+    function editSingleDayHours(task, date) {
+      openHourDialog(task, date);
+    }
+
+    async function setDayHours(task, date, hours, successMessage) {
+      if (isNonWorkDate(date)) {
+        toast("六日或國定假日不可配置工時");
+        return;
+      }
+
+      const allocations = { ...(task.allocations || {}) };
+      if (hours === 0) delete allocations[date];
+      else allocations[date] = hours;
+
+      await saveAllocations(task, allocations, successMessage);
+    }
+
+    function addEventNote(task, date) {
+      openEventDialog({ task, date, index: null });
+    }
+
+    function openEventDialog({ task, date, index }) {
+      if (task.archived) {
+        toast("此專案已封存，不可新增或修改事件");
+        return;
+      }
+
+      if (isNonWorkDate(date)) {
+        toast("六日或國定假日不可新增事件");
+        return;
+      }
+
+      const list = Array.isArray(task.events?.[date]) ? task.events[date] : [];
+      const eventItem = index === null ? null : list[index];
+
+      state.editingEvent = { taskId: task.id, date, index };
+
+      $("eventModalTitle").textContent = index === null ? `新增事件｜${date}` : `修改事件｜${date}`;
+      $("deleteEventBtn").style.display = index === null ? "none" : "";
+
+      const type = eventItem?.type || "會議";
+      const isPreset = type === "會議" || type === "進度";
+
+      $("eventTypeInput").value = isPreset ? type : "自填";
+      $("customTypeInput").value = isPreset ? "" : type;
+      $("customTypeWrap").style.display = isPreset ? "none" : "";
+      $("eventTextInput").value = eventItem?.text || "";
+
+      $("eventDialog").showModal();
+    }
+
+    async function saveEventFromDialog() {
+      const edit = state.editingEvent;
+      if (!edit) return;
+
+      const task = state.tasks.find(t => t.id === edit.taskId);
+      if (!task) return;
+
+      let type = $("eventTypeInput").value;
+      if (type === "自填") {
+        type = $("customTypeInput").value.trim();
+      }
+
+      const text = $("eventTextInput").value.trim();
+
+      if (!type) {
+        toast("請輸入自填類型");
+        return;
+      }
+
+      if (!text) {
+        toast("簡述不可空白");
+        return;
+      }
+
+      const events = cloneEvents(task.events);
+      const list = Array.isArray(events[edit.date]) ? [...events[edit.date]] : [];
+
+      const item = {
+        type,
+        text,
+        updatedBy: state.user.email,
+        updatedAt: new Date().toISOString()
+      };
+
+      if (edit.index === null) {
+        item.createdBy = state.user.email;
+        item.createdAt = new Date().toISOString();
+        list.push(item);
+      } else {
+        list[edit.index] = {
+          ...list[edit.index],
+          ...item
+        };
+      }
+
+      events[edit.date] = list;
+      await saveEvents(task, events, edit.index === null ? "已新增事件" : "已修改事件");
+      $("eventDialog").close();
+    }
+
+    async function deleteEventFromDialog() {
+      const edit = state.editingEvent;
+      if (!edit || edit.index === null) return;
+
+      const task = state.tasks.find(t => t.id === edit.taskId);
+      if (!task) return;
+
+      const events = cloneEvents(task.events);
+      const list = Array.isArray(events[edit.date]) ? [...events[edit.date]] : [];
+      list.splice(edit.index, 1);
+
+      if (list.length) events[edit.date] = list;
+      else delete events[edit.date];
+
+      await saveEvents(task, events, "已刪除事件");
+      $("eventDialog").close();
+    }
+
+    async function saveEvents(task, events, successMessage) {
+      try {
+        await updateDoc(doc(db, "ganttTasks", task.id), {
+          events,
+          updatedBy: state.user.email,
+          updatedAt: serverTimestamp()
+        });
+        task.events = events;
+        render();
+        toast(successMessage || "已儲存事件");
+      } catch (err) {
+        console.error(err);
+        toast("事件儲存失敗：" + err.message);
+      }
+    }
+
+    function cloneEvents(events) {
+      return JSON.parse(JSON.stringify(events || {}));
+    }
+
+    function startEventDrag(event, task, fromDate, index) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      state.eventDrag = { taskId: task.id, fromDate, index };
+      window.addEventListener("pointerup", finishEventDrag, { once: true });
+    }
+
+    async function finishEventDrag(event) {
+      const drag = state.eventDrag;
+      state.eventDrag = null;
+      if (!drag) return;
+
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      const cell = target?.closest?.(".day-cell");
+      const toDate = cell?.dataset?.date;
+
+      if (!toDate || toDate === drag.fromDate) return;
+      if (isNonWorkDate(toDate)) {
+        toast("六日或國定假日不可移動事件");
+        return;
+      }
+
+      const task = state.tasks.find(t => t.id === drag.taskId);
+      if (!task || task.archived) return;
+
+      const events = cloneEvents(task.events);
+      const fromList = Array.isArray(events[drag.fromDate]) ? [...events[drag.fromDate]] : [];
+      const item = fromList[drag.index];
+
+      if (!item) return;
+
+      fromList.splice(drag.index, 1);
+      if (fromList.length) events[drag.fromDate] = fromList;
+      else delete events[drag.fromDate];
+
+      const toList = Array.isArray(events[toDate]) ? [...events[toDate]] : [];
+      toList.push({
+        ...item,
+        movedBy: state.user.email,
+        movedAt: new Date().toISOString()
+      });
+      events[toDate] = toList;
+
+      await saveEvents(task, events, `事件已移到 ${toDate}`);
     }
 
     function startAllocationDrag(event, task, fromDate, hours) {
@@ -915,7 +1612,7 @@
       }
 
       const task = state.tasks.find(t => t.id === drag.taskId);
-      if (!task) return;
+      if (!task || task.archived) return;
 
       const allocations = { ...(task.allocations || {}) };
       delete allocations[drag.fromDate];
@@ -949,6 +1646,11 @@
     }
 
     function openProjectModal(task) {
+      if (task.archived) {
+        toast("此專案已封存，不可編輯");
+        return;
+      }
+
       state.selectedTask = task;
       $("modalTitle").textContent = task.projectName;
       $("startDateInput").value = task.startDate || todayKey();
@@ -1013,6 +1715,11 @@
     async function saveProject() {
       const task = state.selectedTask;
       if (!task) return;
+
+      if (task.archived) {
+        toast("此專案已封存，不可儲存變更");
+        return;
+      }
 
       const startDate = $("startDateInput").value || todayKey();
       const endDate = $("endDateInput").value || defaultEndDate();
@@ -1088,11 +1795,37 @@
       return Object.values(task.allocations || {}).reduce((s, h) => s + number(h), 0);
     }
 
-    function chipGradient(hours) {
-      if (hours >= 8) return "linear-gradient(135deg, #7c3aed, #db2777)";
-      if (hours >= 4) return "linear-gradient(135deg, #2563eb, #7c3aed)";
-      if (hours >= 2) return "linear-gradient(135deg, #0284c7, #2563eb)";
-      return "linear-gradient(135deg, #38bdf8, #2563eb)";
+    function assigneeKey(task) {
+      const rawName = String(task.assigneeName || "").trim();
+      if (rawName && !rawName.includes("@")) return rawName;
+
+      // L 欄原本沒有 @shopee.com，所以 Email 不作為成員名稱顯示，也不列入成員篩選。
+      return "";
+    }
+
+    function displayAssignee(task) {
+      const name = assigneeKey(task);
+      return name || "未指派";
+    }
+
+    function memberColor(name) {
+      return state.memberColorMap.get(name) || "#38bdf8";
+    }
+
+    function chipGradient(task) {
+      const color = memberColor(assigneeKey(task));
+      return `linear-gradient(135deg, ${color}, ${shadeColor(color, -24)})`;
+    }
+
+    function shadeColor(hex, percent) {
+      const clean = String(hex || "#38bdf8").replace("#", "");
+      const num = parseInt(clean.length === 3 ? clean.split("").map(c => c + c).join("") : clean, 16);
+      if (Number.isNaN(num)) return "#2563eb";
+      const amt = Math.round(2.55 * percent);
+      const r = Math.max(0, Math.min(255, (num >> 16) + amt));
+      const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
+      const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
+      return "#" + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
     }
 
     function getNonWorkLabel(d) {
@@ -1181,3 +1914,22 @@
   </script>
 </body>
 </html>
+
+<style>
+  .toolbar-left > button.ghost {
+    height: 68px;
+    min-width: 68px;
+    padding: 0 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.25;
+  }
+  .toolbar .legend-chip {
+    height: 48px;
+    min-width: 92px;
+  }
+  .toolbar .summary-card {
+    min-height: 62px;
+  }
+</style>
