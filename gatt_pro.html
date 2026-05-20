@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GATT-PRO 資源配置甘特圖</title>
+  <style>
+    :root {
+      --bg: #070a12;
+      --panel: #0c1220;
+      --panel2: #101827;
+      --card: #111a2d;
+      --card2: #0f1728;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --soft: #cbd5e1;
+      --line: rgba(203, 213, 225, .24);
+      --line2: rgba(203, 213, 225, .42);
+      --blue: #38bdf8;
+      --blue2: #2563eb;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #fb7185;
+      --purple: #a78bfa;
+      --left: 390px;
+      --day: 42px;
+      --rowh: 118px;
+      --radius: 18px;
+      --shadow: 0 24px 70px rgba(0,0,0,.44);
+      font-family: Inter, "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 8% 0%, rgba(37,99,235,.24), transparent 28%),
+        radial-gradient(circle at 92% 0%, rgba(124,58,237,.18), transparent 26%),
+        linear-gradient(180deg, #070a12 0%, #080d18 100%);
+    }
+
+    button, input, select { font: inherit; }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 9px 13px;
+      cursor: pointer;
+      color: white;
+      font-weight: 850;
+      background: linear-gradient(135deg, var(--blue2), #7c3aed);
+      box-shadow: 0 12px 30px rgba(37,99,235,.25);
+    }
+    button.secondary {
+      color: #bfdbfe;
+      background: rgba(59,130,246,.14);
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.24);
+    }
+    button.ghost {
+      color: var(--soft);
+      background: rgba(15,23,42,.72);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    button.danger {
+      color: #fecdd3;
+      background: rgba(251,113,133,.12);
+      box-shadow: inset 0 0 0 1px rgba(251,113,133,.30);
+    }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 22px;
+      background: rgba(7,10,18,.82);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(18px);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      font-weight: 1000;
+      background: linear-gradient(135deg, #38bdf8, #6366f1 50%, #a855f7);
+      box-shadow: 0 18px 45px rgba(99,102,241,.35);
+    }
+    .brand h1 { margin: 0; font-size: 18px; line-height: 1.2; letter-spacing: .01em; }
+    .brand small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .userbox { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+    .role-badge {
+      display: none;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #bfdbfe;
+      background: rgba(96,165,250,.14);
+      border: 1px solid rgba(96,165,250,.26);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .login {
+      max-width: 780px;
+      margin: 80px auto;
+      padding: 36px;
+      border: 1px solid var(--line2);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(17,26,45,.94), rgba(15,23,40,.94));
+      box-shadow: var(--shadow);
+    }
+    .login h2 { margin: 0 0 10px; font-size: 28px; }
+    .login p { margin: 0 0 22px; line-height: 1.7; color: var(--muted); }
+
+    .toolbar {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 22px;
+      background: rgba(12,18,32,.72);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+    }
+    .toolbar-left { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+    .field { display: grid; gap: 6px; }
+    .field label { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+    .field input, .field select {
+      min-width: 150px;
+      padding: 9px 11px;
+      border-radius: 12px;
+      color: var(--text);
+      background: rgba(15,23,42,.86);
+      border: 1px solid var(--line2);
+      outline: none;
+    }
+    .field input:focus, .field select:focus {
+      border-color: rgba(96,165,250,.85);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.13);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(105px, 1fr));
+      gap: 10px;
+      min-width: min(650px, 100%);
+    }
+    .summary-card {
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(30,41,59,.88), rgba(15,23,42,.88));
+      border: 1px solid rgba(148,163,184,.17);
+    }
+    .summary-card .label { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .05em; }
+    .summary-card .value { margin-top: 4px; font-size: 21px; font-weight: 1000; color: var(--text); }
+    .summary-card .value.over { color: var(--red); }
+
+    .board {
+      margin: 0 22px 22px;
+      border-radius: 22px;
+      overflow: hidden;
+      background: rgba(12,18,32,.84);
+      border: 1px solid var(--line2);
+      box-shadow: var(--shadow);
+    }
+    .scroll {
+      overflow: auto;
+      max-height: calc(100vh - 200px);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: var(--left) repeat(var(--days), var(--day));
+      min-width: calc(var(--left) + var(--days) * var(--day));
+    }
+
+    .corner, .day-head, .project, .day-cell {
+      border-right: 1px solid rgba(226,232,240,.28);
+      border-bottom: 1px solid rgba(226,232,240,.26);
+    }
+    .corner {
+      position: sticky;
+      left: 0;
+      top: 0;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      font-weight: 1000;
+      color: #f8fafc;
+      background: rgba(11,18,32,.99);
+      border-right-color: rgba(226,232,240,.56);
+      border-bottom-color: rgba(226,232,240,.56);
+    }
+    .day-head {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 2px;
+      text-align: center;
+      color: #e2e8f0;
+      background: rgba(11,18,32,.99);
+      border-bottom-color: rgba(226,232,240,.56);
+      font-weight: 950;
+      line-height: 1.1;
+    }
+    .day-head .num { font-size: 14px; }
+    .day-head .wd { font-size: 11px; color: #94a3b8; font-weight: 900; }
+    .day-head.today {
+      color: #bfdbfe;
+      background: rgba(37,99,235,.22);
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.35);
+    }
+    .day-head.nonwork { color: #64748b; background: rgba(15,23,42,.72); }
+
+    .project {
+      position: sticky;
+      left: 0;
+      z-index: 20;
+      min-height: var(--rowh);
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(10,16,29,.99), rgba(14,22,38,.99));
+      border-right-color: rgba(226,232,240,.56);
+      border-bottom-color: rgba(226,232,240,.34);
+    }
+    .project-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 7px;
+      font-size: 21px;
+      line-height: 1.15;
+      font-weight: 1000;
+      letter-spacing: .01em;
+      color: #fff;
+    }
+    .dot {
+      width: 17px;
+      height: 17px;
+      flex: none;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,.35);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.05);
+    }
+    .project-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .progress-line {
+      display: grid;
+      grid-template-columns: 1fr 44px;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .track {
+      height: 14px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(2,6,23,.92);
+      border: 1px solid rgba(148,163,184,.22);
+      box-shadow: inset 0 1px 5px rgba(0,0,0,.48);
+    }
+    .fill {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #38bdf8, #34d399);
+      box-shadow: 0 0 20px rgba(52,211,153,.28);
+    }
+    .fill.over { background: linear-gradient(90deg, #f97316, #fb7185); }
+    .pct { text-align: right; color: #cbd5e1; font-size: 12px; font-weight: 1000; }
+    .hours {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 8px;
+      color: #cbd5e1;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .hours b { color: #fff; font-size: 13px; }
+    .hours .left b { color: var(--green); }
+    .hours .over b { color: var(--red); }
+    .actions { margin-top: 10px; display: flex; gap: 8px; }
+    .actions button { padding: 8px 12px; box-shadow: none; font-size: 12px; }
+
+    .day-cell {
+      position: relative;
+      min-height: var(--rowh);
+      background: linear-gradient(180deg, rgba(15,23,42,.97), rgba(15,23,42,.90));
+      box-shadow: inset 1px 0 0 rgba(255,255,255,.03);
+      transition: background .12s ease, box-shadow .12s ease;
+      cursor: pointer;
+    }
+    .day-cell:hover {
+      background: rgba(30,41,59,.98);
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.56);
+    }
+    .day-cell:hover::before {
+      content: "+";
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #bfdbfe;
+      background: rgba(96,165,250,.18);
+      font-size: 13px;
+      font-weight: 1000;
+      pointer-events: none;
+    }
+    .day-cell.nonwork {
+      cursor: not-allowed;
+      background: rgba(15,23,42,.48);
+    }
+    .day-cell.nonwork::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(135deg, rgba(148,163,184,.10) 0, rgba(148,163,184,.10) 4px, transparent 4px, transparent 10px);
+      pointer-events: none;
+    }
+    .day-cell.today {
+      background: rgba(37,99,235,.18);
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.42);
+    }
+    .chip {
+      position: absolute;
+      left: 5px;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 5;
+      border-radius: 999px;
+      padding: 6px 4px;
+      text-align: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 1000;
+      cursor: grab;
+      user-select: none;
+      box-shadow: 0 12px 22px rgba(37,99,235,.36);
+    }
+    .chip:active { cursor: grabbing; }
+
+    .empty {
+      display: none;
+      padding: 54px 20px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    dialog {
+      width: min(760px, calc(100vw - 28px));
+      padding: 0;
+      border: 1px solid var(--line2);
+      border-radius: 22px;
+      color: var(--text);
+      background: var(--card);
+      box-shadow: 0 34px 100px rgba(0,0,0,.62);
+    }
+    dialog::backdrop { background: rgba(2,6,23,.72); backdrop-filter: blur(6px); }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .modal-head h3 { margin: 0; font-size: 20px; font-weight: 1000; }
+    .modal-body { padding: 20px; display: grid; gap: 16px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .form-grid input { width: 100%; min-width: 0; }
+    .modal-stat {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .modal-stat div {
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(15,23,42,.70);
+      border: 1px solid rgba(148,163,184,.15);
+    }
+    .modal-stat span { display: block; color: var(--muted); font-size: 11px; font-weight: 900; }
+    .modal-stat b { display: block; margin-top: 5px; font-size: 21px; }
+    .alloc-list { display: grid; gap: 8px; }
+    .alloc-row {
+      display: grid;
+      grid-template-columns: 1fr 120px auto;
+      gap: 8px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 14px;
+      background: rgba(15,23,42,.64);
+      border: 1px solid rgba(148,163,184,.15);
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--line);
+    }
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 999;
+      display: none;
+      max-width: 380px;
+      padding: 12px 14px;
+      color: #fff;
+      background: #020617;
+      border: 1px solid var(--line2);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    @media (max-width: 900px) {
+      :root { --left: 320px; --day: 38px; --rowh: 120px; }
+      .toolbar { align-items: stretch; flex-direction: column; }
+      .summary { grid-template-columns: repeat(2, minmax(0,1fr)); min-width: 0; }
+      .form-grid, .modal-stat { grid-template-columns: 1fr; }
+      .project-title { font-size: 18px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">G</div>
+      <div>
+        <h1>GATT-PRO 資源配置甘特圖</h1>
+        <small>Google Sheet 同步總時數 · Firestore 保存每日配置</small>
+      </div>
+    </div>
+    <div class="userbox">
+      <span id="userText">尚未登入</span>
+      <span id="roleBadge" class="role-badge"></span>
+      <button id="loginBtn" type="button">Google 登入</button>
+      <button id="logoutBtn" class="ghost" type="button" style="display:none;">登出</button>
+    </div>
+  </header>
+
+  <section id="loginScreen" class="login">
+    <h2>登入後查看你的配置看板</h2>
+    <p>管理者可查看所有專案；組員只會看到指派給自己的專案。試算表只同步專案與總時數，每日工時配置會獨立保存在 Firestore，不會被同步清除。</p>
+    <button id="loginBtn2" type="button">使用 Google 登入</button>
+  </section>
+
+  <main id="main" style="display:none;">
+    <section class="toolbar">
+      <div class="toolbar-left">
+        <div class="field">
+          <label>月份</label>
+          <input id="monthPicker" type="month">
+        </div>
+        <div class="field">
+          <label>顯示範圍</label>
+          <select id="viewMode">
+            <option value="my">只看我的</option>
+            <option value="all">全部專案</option>
+          </select>
+        </div>
+        <button id="prevMonthBtn" class="ghost" type="button">上個月</button>
+        <button id="nextMonthBtn" class="ghost" type="button">下個月</button>
+      </div>
+
+      <div class="summary">
+        <div class="summary-card"><div class="label">專案數</div><div class="value" id="sumProjects">0</div></div>
+        <div class="summary-card"><div class="label">總可用</div><div class="value" id="sumTotal">0h</div></div>
+        <div class="summary-card"><div class="label">已配置</div><div class="value" id="sumUsed">0h</div></div>
+        <div class="summary-card"><div class="label">剩餘</div><div class="value" id="sumLeft">0h</div></div>
+      </div>
+    </section>
+
+    <section class="board">
+      <div class="scroll">
+        <div id="grid" class="grid"></div>
+      </div>
+      <div id="empty" class="empty">目前沒有符合條件的專案。</div>
+    </section>
+  </main>
+
+  <dialog id="projectDialog">
+    <form id="projectForm" method="dialog">
+      <div class="modal-head">
+        <h3 id="modalTitle">配置工時</h3>
+        <button id="closeModalBtn" type="button" class="ghost">關閉</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label>開始日期</label>
+            <input id="startDateInput" type="date" required>
+          </div>
+          <div class="field">
+            <label>結束日期</label>
+            <input id="endDateInput" type="date" required>
+          </div>
+        </div>
+
+        <div class="modal-stat">
+          <div><span>總時數</span><b id="modalTotal">0h</b></div>
+          <div><span>已配置</span><b id="modalUsed">0h</b></div>
+          <div><span>剩餘</span><b id="modalLeft">0h</b></div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px;">
+            <b>每日配置</b>
+            <button id="addAllocBtn" type="button" class="secondary">新增一日</button>
+          </div>
+          <div id="allocList" class="alloc-list"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="deleteAllocsBtn" type="button" class="danger">清空配置</button>
+        <button id="saveProjectBtn" type="button">儲存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signInWithRedirect,
+      getRedirectResult,
+      onAuthStateChanged,
+      signOut,
+      setPersistence,
+      browserLocalPersistence
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      query,
+      where,
+      doc,
+      getDoc,
+      onSnapshot,
+      updateDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBhs48tjMrxI1arls5zdRZCO2tPgZTxWy4",
+      authDomain: "gatt-pro.firebaseapp.com",
+      projectId: "gatt-pro",
+      storageBucket: "gatt-pro.firebasestorage.app",
+      messagingSenderId: "370439475534",
+      appId: "1:370439475534:web:1ee6fc30b790e3775e4e1f",
+      measurementId: "G-50JW2WYDN2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    isSupported().then(ok => ok && getAnalytics(app)).catch(() => {});
+    const auth = getAuth(app);
+    await setPersistence(auth, browserLocalPersistence).catch(console.error);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
+    const $ = (id) => document.getElementById(id);
+    const state = {
+      user: null,
+      isAdmin: false,
+      role: "member",
+      tasks: [],
+      unsubTasks: null,
+      unsubHolidays: null,
+      holidays: new Map(),
+      month: new Date(),
+      selectedTask: null,
+      allocationDrag: null
+    };
+
+    $("loginBtn").addEventListener("click", login);
+    $("loginBtn2").addEventListener("click", login);
+    $("logoutBtn").addEventListener("click", () => signOut(auth));
+    $("prevMonthBtn").addEventListener("click", () => shiftMonth(-1));
+    $("nextMonthBtn").addEventListener("click", () => shiftMonth(1));
+    $("viewMode").addEventListener("change", subscribeTasks);
+    $("monthPicker").addEventListener("change", (e) => {
+      const [y, m] = e.target.value.split("-").map(Number);
+      state.month = new Date(y, m - 1, 1);
+      render();
+    });
+
+    $("projectForm").addEventListener("submit", (e) => e.preventDefault());
+    $("closeModalBtn").addEventListener("click", () => $("projectDialog").close());
+    $("addAllocBtn").addEventListener("click", () => addAllocRow(nextWorkDate(todayKey()), ""));
+    $("deleteAllocsBtn").addEventListener("click", () => {
+      $("allocList").innerHTML = "";
+      updateModalStats();
+    });
+    $("saveProjectBtn").addEventListener("click", saveProject);
+
+    getRedirectResult(auth).catch(err => toast("Redirect 登入失敗：" + err.message));
+
+    async function login() {
+      $("userText").textContent = "登入確認中...";
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        console.warn("Popup login failed:", err);
+        if (
+          err.code === "auth/popup-blocked" ||
+          err.code === "auth/popup-closed-by-user" ||
+          err.code === "auth/cancelled-popup-request" ||
+          err.code === "auth/operation-not-supported-in-this-environment"
+        ) {
+          await signInWithRedirect(auth, provider);
+          return;
+        }
+        $("userText").textContent = "尚未登入";
+        toast("登入失敗：" + err.message);
+      }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      state.user = user;
+      if (!user) {
+        if (state.unsubTasks) state.unsubTasks();
+        if (state.unsubHolidays) state.unsubHolidays();
+        state.tasks = [];
+        state.holidays = new Map();
+        state.isAdmin = false;
+        $("main").style.display = "none";
+        $("loginScreen").style.display = "";
+        $("loginBtn").style.display = "";
+        $("logoutBtn").style.display = "none";
+        $("roleBadge").style.display = "none";
+        $("userText").textContent = "尚未登入";
+        return;
+      }
+
+      $("userText").textContent = user.email;
+      $("loginBtn").style.display = "none";
+      $("logoutBtn").style.display = "";
+      $("loginScreen").style.display = "none";
+      $("main").style.display = "";
+
+      await loadRole();
+      subscribeHolidays();
+      setDefaultMonth();
+      subscribeTasks();
+    });
+
+    async function loadRole() {
+      state.role = "member";
+      state.isAdmin = false;
+      try {
+        const snap = await getDoc(doc(db, "users", state.user.email));
+        if (snap.exists()) state.role = snap.data().role || "member";
+      } catch (err) {
+        console.warn("讀取角色失敗，使用 member：", err);
+      }
+      state.isAdmin = state.role === "admin";
+      $("roleBadge").textContent = state.isAdmin ? "管理者" : "組員";
+      $("roleBadge").style.display = "inline-flex";
+      $("viewMode").value = state.isAdmin ? "all" : "my";
+      $("viewMode").disabled = !state.isAdmin;
+    }
+
+    function setDefaultMonth() {
+      const now = new Date();
+      state.month = new Date(now.getFullYear(), now.getMonth(), 1);
+      $("monthPicker").value = monthKey(state.month);
+    }
+
+    function subscribeHolidays() {
+      if (state.unsubHolidays) state.unsubHolidays();
+      state.unsubHolidays = onSnapshot(collection(db, "holidays"), (snap) => {
+        const map = new Map();
+        snap.docs.forEach(d => {
+          const data = d.data();
+          const date = data.date || d.id;
+          if (date) map.set(String(date), data.name || "國定假日");
+        });
+        state.holidays = map;
+        render();
+      }, (err) => {
+        console.warn("holidays 讀取失敗，只套用六日：", err);
+        state.holidays = new Map();
+        render();
+      });
+    }
+
+    function subscribeTasks() {
+      if (!state.user) return;
+      if (state.unsubTasks) state.unsubTasks();
+
+      const mode = state.isAdmin ? $("viewMode").value : "my";
+      const q = mode === "my"
+        ? query(collection(db, "ganttTasks"), where("assigneeEmail", "==", state.user.email))
+        : query(collection(db, "ganttTasks"));
+
+      state.unsubTasks = onSnapshot(q, (snap) => {
+        state.tasks = snap.docs.map(d => normalizeTask(d.id, d.data()));
+        render();
+      }, (err) => {
+        console.error(err);
+        toast("讀取專案失敗：" + err.message);
+      });
+    }
+
+    function normalizeTask(id, data) {
+      const jimmyHours = number(data.jimmyHours);
+      const otherHours = number(data.otherHours);
+      const isJimmy = String(data.assigneeName || "").trim().toUpperCase() === "JIMMY"
+        || data.assigneeEmail === "jimmy.wu@shopee.com";
+      const totalHours = isJimmy ? jimmyHours : otherHours;
+
+      return {
+        id,
+        projectName: data.projectName || "(未命名)",
+        assigneeName: data.assigneeName || "",
+        assigneeEmail: data.assigneeEmail || "",
+        status: data.status || "",
+        color: data.color || "#38bdf8",
+        totalHours,
+        startDate: data.startDate || todayKey(),
+        endDate: data.endDate || defaultEndDate(),
+        enabledMonth: data.enabledMonth || "",
+        allocations: data.allocations || {}
+      };
+    }
+
+    function render() {
+      const days = daysInMonth(state.month);
+      const grid = $("grid");
+      grid.style.setProperty("--days", days.length);
+      grid.innerHTML = "";
+
+      const visible = state.tasks
+        .filter(t => touchesMonth(t, state.month))
+        .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)) || a.projectName.localeCompare(b.projectName));
+
+      $("empty").style.display = visible.length ? "none" : "block";
+      grid.style.display = visible.length ? "grid" : "none";
+
+      renderSummary(visible);
+
+      const corner = document.createElement("div");
+      corner.className = "corner";
+      corner.textContent = "專案 / 工時";
+      grid.appendChild(corner);
+
+      days.forEach(d => {
+        const date = dateKey(d);
+        const head = document.createElement("div");
+        const nonwork = getNonWorkLabel(d);
+        head.className = "day-head" + (isToday(d) ? " today" : "") + (nonwork ? " nonwork" : "");
+        const wd = d.getDay();
+        const weekdayLabel = ["", "一", "二", "三", "四", "五", ""][wd];
+        head.innerHTML = `<div class="num">${d.getDate()}</div>${weekdayLabel ? `<div class="wd">${weekdayLabel}</div>` : ""}`;
+        head.title = nonwork || date;
+        grid.appendChild(head);
+      });
+
+      visible.forEach(task => {
+        grid.appendChild(projectCell(task));
+        days.forEach(d => grid.appendChild(dayCell(task, d)));
+      });
+    }
+
+    function renderSummary(tasks) {
+      const total = tasks.reduce((s, t) => s + t.totalHours, 0);
+      const used = tasks.reduce((s, t) => s + usedHours(t), 0);
+      const left = total - used;
+      $("sumProjects").textContent = tasks.length;
+      $("sumTotal").textContent = `${total}h`;
+      $("sumUsed").textContent = `${used}h`;
+      $("sumLeft").textContent = `${left}h`;
+      $("sumLeft").className = "value" + (left < 0 ? " over" : "");
+    }
+
+    function projectCell(task) {
+      const used = usedHours(task);
+      const left = task.totalHours - used;
+      const pct = task.totalHours ? Math.round(used / task.totalHours * 100) : 0;
+
+      const div = document.createElement("div");
+      div.className = "project";
+      div.dataset.taskId = task.id;
+      div.innerHTML = `
+        <div class="project-title">
+          <span class="dot" style="background:${escapeAttr(task.color)}"></span>
+          <span>${escapeHtml(task.projectName)}</span>
+        </div>
+        <div class="project-meta">
+          <span>${escapeHtml(task.assigneeName || task.assigneeEmail || "-")}</span>
+          <span>${escapeHtml(task.startDate)} ～ ${escapeHtml(task.endDate)}</span>
+        </div>
+        <div class="progress-line" title="總 ${task.totalHours}h / 已配 ${used}h / 剩 ${left}h">
+          <div class="track"><div class="fill ${left < 0 ? "over" : ""}" style="width:${Math.min(100, Math.max(0, pct))}%"></div></div>
+          <div class="pct">${pct}%</div>
+        </div>
+        <div class="hours">
+          <span>總 <b>${task.totalHours}h</b></span>
+          <span>已配 <b>${used}h</b></span>
+          <span class="${left < 0 ? "over" : "left"}">剩 <b>${left}h</b></span>
+        </div>
+        <div class="actions"><button type="button" class="secondary">配置工時</button></div>
+      `;
+      div.querySelector("button").addEventListener("click", () => openProjectModal(task));
+      return div;
+    }
+
+    function dayCell(task, d) {
+      const date = dateKey(d);
+      const label = getNonWorkLabel(d);
+      const cell = document.createElement("div");
+      cell.className = "day-cell" + (isToday(d) ? " today" : "") + (label ? " nonwork" : "");
+      cell.dataset.date = date;
+      cell.title = label ? `${label}：不可配置` : `${date} 點擊配置工時`;
+
+      if (!label) {
+        cell.addEventListener("click", () => quickSetHours(task, date));
+      }
+
+      const h = number(task.allocations?.[date]);
+      if (h > 0) {
+        const chip = document.createElement("div");
+        chip.className = "chip";
+        chip.textContent = `${h}h`;
+        chip.style.background = chipGradient(h);
+        chip.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openProjectModal(task);
+        });
+        chip.addEventListener("pointerdown", (e) => startAllocationDrag(e, task, date, h));
+        cell.appendChild(chip);
+      }
+
+      return cell;
+    }
+
+    async function quickSetHours(task, date) {
+      if (isNonWorkDate(date)) {
+        toast("六日或國定假日不可配置工時");
+        return;
+      }
+
+      const current = number(task.allocations?.[date]);
+      const input = prompt(`${date} 要配置幾小時？\n輸入 0 可清除當天工時。`, current || "");
+      if (input === null) return;
+
+      const h = Number(input);
+      if (!Number.isFinite(h) || h < 0) {
+        toast("請輸入有效小時數");
+        return;
+      }
+
+      const allocations = { ...(task.allocations || {}) };
+      if (h === 0) delete allocations[date];
+      else allocations[date] = h;
+
+      await saveAllocations(task, allocations, "已快速更新工時");
+    }
+
+    function startAllocationDrag(event, task, fromDate, hours) {
+      event.preventDefault();
+      event.stopPropagation();
+      state.allocationDrag = { taskId: task.id, fromDate, hours };
+      window.addEventListener("pointerup", finishAllocationDrag, { once: true });
+    }
+
+    async function finishAllocationDrag(event) {
+      const drag = state.allocationDrag;
+      state.allocationDrag = null;
+      if (!drag) return;
+
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      const cell = target?.closest?.(".day-cell");
+      const toDate = cell?.dataset?.date;
+
+      if (!toDate || toDate === drag.fromDate) return;
+      if (isNonWorkDate(toDate)) {
+        toast("六日或國定假日不可配置工時");
+        return;
+      }
+
+      const task = state.tasks.find(t => t.id === drag.taskId);
+      if (!task) return;
+
+      const allocations = { ...(task.allocations || {}) };
+      delete allocations[drag.fromDate];
+      allocations[toDate] = drag.hours;
+
+      await saveAllocations(task, allocations, `已移到 ${toDate}`);
+    }
+
+    async function saveAllocations(task, allocations, successMessage) {
+      const used = Object.values(allocations).reduce((s, h) => s + number(h), 0);
+      if (used > task.totalHours) {
+        const ok = confirm(`已配置 ${used}h，超過總時數 ${task.totalHours}h。仍要儲存嗎？`);
+        if (!ok) return;
+      }
+
+      try {
+        await updateDoc(doc(db, "ganttTasks", task.id), {
+          allocations,
+          allocatedHours: used,
+          remainingHours: task.totalHours - used,
+          updatedBy: state.user.email,
+          updatedAt: serverTimestamp()
+        });
+        task.allocations = allocations;
+        render();
+        toast(successMessage || "已儲存");
+      } catch (err) {
+        console.error(err);
+        toast("儲存失敗：" + err.message);
+      }
+    }
+
+    function openProjectModal(task) {
+      state.selectedTask = task;
+      $("modalTitle").textContent = task.projectName;
+      $("startDateInput").value = task.startDate || todayKey();
+      $("endDateInput").value = task.endDate || defaultEndDate();
+      $("allocList").innerHTML = "";
+
+      Object.entries(task.allocations || {})
+        .sort(([a], [b]) => a.localeCompare(b))
+        .forEach(([date, hours]) => addAllocRow(date, hours));
+
+      if (!Object.keys(task.allocations || {}).length) {
+        addAllocRow(nextWorkDate(todayKey()), "");
+      }
+
+      updateModalStats();
+      $("projectDialog").showModal();
+    }
+
+    function addAllocRow(dateValue, hoursValue) {
+      const row = document.createElement("div");
+      row.className = "alloc-row";
+      row.innerHTML = `
+        <input type="date" class="alloc-date" value="${escapeAttr(dateValue || nextWorkDate(todayKey()))}">
+        <input type="number" class="alloc-hours" min="0" step="0.5" value="${escapeAttr(hoursValue || "")}" placeholder="小時">
+        <button type="button" class="danger">刪除</button>
+      `;
+      row.querySelector(".alloc-date").addEventListener("change", (e) => {
+        if (e.target.value && isNonWorkDate(e.target.value)) toast("六日或國定假日不可配置工時");
+        updateModalStats();
+      });
+      row.querySelector(".alloc-hours").addEventListener("input", updateModalStats);
+      row.querySelector("button").addEventListener("click", () => {
+        row.remove();
+        updateModalStats();
+      });
+      $("allocList").appendChild(row);
+      updateModalStats();
+    }
+
+    function collectAllocations() {
+      const result = {};
+      $("allocList").querySelectorAll(".alloc-row").forEach(row => {
+        const date = row.querySelector(".alloc-date").value;
+        const h = number(row.querySelector(".alloc-hours").value);
+        if (date && h > 0) result[date] = (result[date] || 0) + h;
+      });
+      return result;
+    }
+
+    function updateModalStats() {
+      const task = state.selectedTask;
+      if (!task) return;
+      const allocs = collectAllocations();
+      const used = Object.values(allocs).reduce((s, h) => s + number(h), 0);
+      const left = task.totalHours - used;
+      $("modalTotal").textContent = `${task.totalHours}h`;
+      $("modalUsed").textContent = `${used}h`;
+      $("modalLeft").textContent = `${left}h`;
+      $("modalLeft").style.color = left < 0 ? "var(--red)" : "var(--green)";
+    }
+
+    async function saveProject() {
+      const task = state.selectedTask;
+      if (!task) return;
+
+      const startDate = $("startDateInput").value || todayKey();
+      const endDate = $("endDateInput").value || defaultEndDate();
+      if (endDate < startDate) {
+        toast("結束日期不可早於開始日期");
+        return;
+      }
+
+      const allocations = collectAllocations();
+      const blocked = Object.keys(allocations).find(isNonWorkDate);
+      if (blocked) {
+        toast(`${blocked} 是六日或國定假日，不可配置`);
+        return;
+      }
+
+      const btn = $("saveProjectBtn");
+      btn.disabled = true;
+      btn.textContent = "儲存中...";
+
+      const used = Object.values(allocations).reduce((s, h) => s + number(h), 0);
+      if (used > task.totalHours) {
+        const ok = confirm(`已配置 ${used}h，超過總時數 ${task.totalHours}h。仍要儲存嗎？`);
+        if (!ok) {
+          btn.disabled = false;
+          btn.textContent = "儲存";
+          return;
+        }
+      }
+
+      try {
+        await updateDoc(doc(db, "ganttTasks", task.id), {
+          startDate,
+          endDate,
+          allocations,
+          allocatedHours: used,
+          remainingHours: task.totalHours - used,
+          updatedBy: state.user.email,
+          updatedAt: serverTimestamp()
+        });
+        $("projectDialog").close();
+        toast("已儲存");
+      } catch (err) {
+        console.error(err);
+        toast("儲存失敗：" + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "儲存";
+      }
+    }
+
+    function shiftMonth(delta) {
+      state.month = new Date(state.month.getFullYear(), state.month.getMonth() + delta, 1);
+      $("monthPicker").value = monthKey(state.month);
+      render();
+    }
+
+    function daysInMonth(d) {
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const last = new Date(y, m + 1, 0).getDate();
+      return Array.from({ length: last }, (_, i) => new Date(y, m, i + 1));
+    }
+
+    function touchesMonth(task, monthDate) {
+      const start = task.startDate || todayKey();
+      const end = task.endDate || defaultEndDate();
+      const mStart = dateKey(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
+      const mEnd = dateKey(new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0));
+      return start <= mEnd && end >= mStart;
+    }
+
+    function usedHours(task) {
+      return Object.values(task.allocations || {}).reduce((s, h) => s + number(h), 0);
+    }
+
+    function chipGradient(hours) {
+      if (hours >= 8) return "linear-gradient(135deg, #7c3aed, #db2777)";
+      if (hours >= 4) return "linear-gradient(135deg, #2563eb, #7c3aed)";
+      if (hours >= 2) return "linear-gradient(135deg, #0284c7, #2563eb)";
+      return "linear-gradient(135deg, #38bdf8, #2563eb)";
+    }
+
+    function getNonWorkLabel(d) {
+      const date = dateKey(d);
+      if (state.holidays.has(date)) return state.holidays.get(date);
+      if (d.getDay() === 0) return "星期日";
+      if (d.getDay() === 6) return "星期六";
+      return "";
+    }
+
+    function isNonWorkDate(dateString) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateString || ""))) return false;
+      return Boolean(getNonWorkLabel(parseDate(dateString)));
+    }
+
+    function nextWorkDate(from) {
+      const d = parseDate(from || todayKey());
+      for (let i = 0; i < 370; i++) {
+        const key = dateKey(d);
+        if (!isNonWorkDate(key)) return key;
+        d.setDate(d.getDate() + 1);
+      }
+      return todayKey();
+    }
+
+    function todayKey() {
+      return dateKey(new Date());
+    }
+
+    function defaultEndDate() {
+      const now = new Date();
+      return `${now.getFullYear()}-09-30`;
+    }
+
+    function parseDate(str) {
+      const [y, m, d] = String(str || "").split("-").map(Number);
+      if (!y || !m || !d) {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      }
+      return new Date(y, m - 1, d);
+    }
+
+    function dateKey(d) {
+      if (!(d instanceof Date) || Number.isNaN(d.getTime())) d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function monthKey(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    function isToday(d) {
+      return dateKey(d) === todayKey();
+    }
+
+    function number(v) {
+      const n = Number(v || 0);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function toast(message) {
+      const el = $("toast");
+      el.textContent = message;
+      el.style.display = "block";
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.style.display = "none", 4200);
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/[&<>"']/g, m => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[m]));
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str).replace(/`/g, "&#096;");
+    }
+  </script>
+</body>
+</html>
