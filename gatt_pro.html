@@ -337,6 +337,42 @@
     }
     .project.archived { opacity: .58; filter: grayscale(.25); }
     .project.archived .project-title { color: #cbd5e1; }
+
+    .corner {
+      gap: 10px;
+      justify-content: space-between;
+    }
+    .corner-title {
+      font-weight: 1000;
+      white-space: nowrap;
+    }
+    .sort-select {
+      min-width: 112px;
+      max-width: 132px;
+      height: 34px;
+      padding: 0 8px;
+      border-radius: 10px;
+      color: #dbeafe;
+      background: rgba(15,23,42,.86);
+      border: 1px solid rgba(148,163,184,.28);
+      outline: none;
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .q-percent {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #fde68a;
+      background: rgba(251,191,36,.12);
+      border: 1px solid rgba(251,191,36,.24);
+      font-size: 12px;
+      font-weight: 1000;
+    }
+
     .project-title {
       display: flex;
       align-items: center;
@@ -636,6 +672,38 @@
       box-shadow: 0 0 0 3px rgba(96,165,250,.13);
     }
 
+
+    button.detail-empty {
+      color: #cbd5e1;
+      background: rgba(100,116,139,.22);
+      box-shadow: inset 0 0 0 1px rgba(148,163,184,.22);
+    }
+    button.detail-filled {
+      color: #bfdbfe;
+      background: rgba(59,130,246,.14);
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.24);
+    }
+    .detail-form {
+      width: min(620px, calc(100vw - 28px));
+    }
+    .detail-form textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      padding: 12px;
+      border-radius: 14px;
+      color: var(--text);
+      background: rgba(15,23,42,.86);
+      border: 1px solid var(--line2);
+      outline: none;
+      font: inherit;
+      line-height: 1.6;
+    }
+    .detail-form textarea:focus {
+      border-color: rgba(96,165,250,.85);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.13);
+    }
+
     .toast {
       position: fixed;
       right: 18px;
@@ -656,7 +724,43 @@
       .toolbar { align-items: stretch; flex-direction: column; }
       .summary { grid-template-columns: repeat(2, minmax(0,1fr)); min-width: 0; }
       .form-grid, .modal-stat { grid-template-columns: 1fr; }
-      .project-title { font-size: 18px; }
+  
+    .corner {
+      gap: 10px;
+      justify-content: space-between;
+    }
+    .corner-title {
+      font-weight: 1000;
+      white-space: nowrap;
+    }
+    .sort-select {
+      min-width: 112px;
+      max-width: 132px;
+      height: 34px;
+      padding: 0 8px;
+      border-radius: 10px;
+      color: #dbeafe;
+      background: rgba(15,23,42,.86);
+      border: 1px solid rgba(148,163,184,.28);
+      outline: none;
+      font-size: 12px;
+      font-weight: 850;
+    }
+    .q-percent {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #fde68a;
+      background: rgba(251,191,36,.12);
+      border: 1px solid rgba(251,191,36,.24);
+      font-size: 12px;
+      font-weight: 1000;
+    }
+
+    .project-title { font-size: 18px; }
       .legend { max-width: none; }
     }
   </style>
@@ -820,6 +924,26 @@
     </form>
   </dialog>
 
+
+  <dialog id="detailDialog" class="detail-form">
+    <form id="detailForm" method="dialog">
+      <div class="modal-head">
+        <h3 id="detailModalTitle">專案詳情</h3>
+        <button id="closeDetailBtn" type="button" class="ghost">關閉</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>內容說明</label>
+          <textarea id="projectDetailInput" placeholder="輸入此專案的背景、注意事項、需求摘要、風險或其他說明..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="clearDetailBtn" type="button" class="danger">清空內容</button>
+        <button id="saveDetailBtn" type="button">儲存</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="toast" class="toast"></div>
 
   <script type="module">
@@ -886,7 +1010,9 @@
       eventDrag: null,
       editingEvent: null,
       editingHour: null,
+      editingDetailTaskId: null,
       selectedAssignees: new Set(["__ALL__"]),
+      sortMode: "name",
       memberColorMap: new Map()
     };
 
@@ -916,6 +1042,11 @@
     $("hourDateInput").addEventListener("change", updateHourDialogStats);
     $("saveHourBtn").addEventListener("click", saveHourFromDialog);
     $("clearHourBtn").addEventListener("click", clearHourFromDialog);
+
+    $("detailForm").addEventListener("submit", (e) => e.preventDefault());
+    $("closeDetailBtn").addEventListener("click", () => $("detailDialog").close());
+    $("saveDetailBtn").addEventListener("click", saveProjectDetail);
+    $("clearDetailBtn").addEventListener("click", clearProjectDetail);
 
     $("eventForm").addEventListener("submit", (e) => e.preventDefault());
     $("closeEventBtn").addEventListener("click", () => $("eventDialog").close());
@@ -1051,11 +1182,13 @@
         status: data.status || "",
         color: data.color || "#38bdf8",
         totalHours,
+        qPercent: data.qPercent ?? data.enabledMonth ?? "",
         startDate: data.startDate || todayKey(),
         endDate: data.endDate || defaultEndDate(),
         enabledMonth: data.enabledMonth || "",
         allocations: data.allocations || {},
         events: data.events || {},
+        projectDetail: data.projectDetail || "",
         archived: String(data.status || "").trim() !== "未開發"
       };
     }
@@ -1155,7 +1288,7 @@
         .filter(t => String(t.status || "").trim() === "未開發")
         .filter(t => touchesMonth(t, state.month))
         .filter(t => filterAllowsTask(t))
-        .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)) || a.projectName.localeCompare(b.projectName));
+        .sort(compareTasks);
 
       $("empty").style.display = visible.length ? "none" : "block";
       grid.style.display = visible.length ? "grid" : "none";
@@ -1164,8 +1297,20 @@
 
       const corner = document.createElement("div");
       corner.className = "corner";
-      corner.textContent = "專案 / 工時";
+      corner.innerHTML = `
+        <span class="corner-title">專案 / 工時</span>
+        <select id="sortSelect" class="sort-select" title="排序">
+          <option value="name" ${state.sortMode === "name" ? "selected" : ""}>名稱</option>
+          <option value="cp" ${state.sortMode === "cp" ? "selected" : ""}>CP值</option>
+          <option value="workStart" ${state.sortMode === "workStart" ? "selected" : ""}>工時</option>
+        </select>
+      `;
       grid.appendChild(corner);
+
+      corner.querySelector("#sortSelect").addEventListener("change", (event) => {
+        state.sortMode = event.target.value;
+        render();
+      });
 
       days.forEach(d => {
         const date = dateKey(d);
@@ -1229,15 +1374,19 @@
           <span>總 <b>${task.totalHours}h</b></span>
           <span>已配 <b>${used}h</b></span>
           <span class="${left < 0 ? "over" : "left"}">剩 <b>${left}h</b></span>
+          ${formatPercent(task.qPercent) ? `<span class="q-percent">Q ${formatPercent(task.qPercent)}</span>` : ""}
         </div>
         <div class="actions">
           ${task.archived
             ? `<span class="readonly-note">已封存，保留配置紀錄但不可編輯</span>`
-            : `<button type="button" class="secondary">配置工時</button>`}
+            : `<button type="button" class="secondary config-btn">配置工時</button>`}
+          <button type="button" class="${task.projectDetail ? "detail-filled" : "detail-empty"} detail-btn">專案詳情</button>
         </div>
       `;
-      const btn = div.querySelector("button");
-      if (btn) btn.addEventListener("click", () => openProjectModal(task));
+      const configBtn = div.querySelector(".config-btn");
+      if (configBtn) configBtn.addEventListener("click", () => openProjectModal(task));
+      const detailBtn = div.querySelector(".detail-btn");
+      if (detailBtn) detailBtn.addEventListener("click", () => openDetailModal(task));
       return div;
     }
 
@@ -1768,6 +1917,75 @@
         btn.disabled = false;
         btn.textContent = "儲存";
       }
+    }
+
+    function compareTasks(a, b) {
+      if (state.sortMode === "cp") {
+        const aq = percentNumber(a.qPercent);
+        const bq = percentNumber(b.qPercent);
+        return bq - aq || a.projectName.localeCompare(b.projectName);
+      }
+
+      if (state.sortMode === "workStart") {
+        return firstAllocationDate(a).localeCompare(firstAllocationDate(b))
+          || a.projectName.localeCompare(b.projectName);
+      }
+
+      return a.projectName.localeCompare(b.projectName);
+    }
+
+    function firstAllocationDate(task) {
+      const dates = Object.keys(task.allocations || {}).filter(date => number(task.allocations[date]) > 0).sort();
+      return dates[0] || "9999-12-31";
+    }
+
+    function percentNumber(value) {
+      if (value === null || value === undefined) return 0;
+      const raw = String(value).replace("%", "").trim();
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return 0;
+      return n <= 1 && raw.indexOf(".") >= 0 ? n * 100 : n;
+    }
+
+    function formatPercent(value) {
+      if (value === null || value === undefined || value === "") return "";
+      const n = percentNumber(value);
+      if (!Number.isFinite(n)) return "";
+      return `${Math.round(n * 10) / 10}%`;
+    }
+
+    function openDetailModal(task) {
+      state.editingDetailTaskId = task.id;
+      $("detailModalTitle").textContent = `專案詳情｜${task.projectName}`;
+      $("projectDetailInput").value = task.projectDetail || "";
+      $("detailDialog").showModal();
+    }
+
+    async function saveProjectDetail() {
+      const task = state.tasks.find(t => t.id === state.editingDetailTaskId);
+      if (!task) return;
+
+      const projectDetail = $("projectDetailInput").value.trim();
+
+      try {
+        await updateDoc(doc(db, "ganttTasks", task.id), {
+          projectDetail,
+          detailUpdatedBy: state.user.email,
+          detailUpdatedAt: serverTimestamp()
+        });
+        task.projectDetail = projectDetail;
+        $("detailDialog").close();
+        render();
+        toast("專案詳情已儲存");
+      } catch (err) {
+        console.error(err);
+        toast("專案詳情儲存失敗：" + err.message);
+      }
+    }
+
+    async function clearProjectDetail() {
+      $("projectDetailInput").value = "";
+      await saveProjectDetail();
     }
 
     function shiftMonth(delta) {
