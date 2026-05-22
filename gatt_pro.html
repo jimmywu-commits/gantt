@@ -1170,9 +1170,14 @@
     function normalizeTask(id, data) {
       const jimmyHours = number(data.jimmyHours);
       const otherHours = number(data.otherHours);
-      const isJimmy = String(data.assigneeName || "").trim().toUpperCase() === "JIMMY"
+      const legacyIsJimmy = String(data.assigneeName || "").trim().toUpperCase() === "JIMMY"
         || data.assigneeEmail === "jimmy.wu@shopee.com";
-      const totalHours = isJimmy ? jimmyHours : otherHours;
+
+      // 新版優先讀 totalHours，讓方向一、方向二共用同一個總時數欄位。
+      // 舊資料如果還沒有 totalHours，才退回 jimmyHours / otherHours。
+      const totalHours = data.totalHours !== undefined && data.totalHours !== null
+        ? number(data.totalHours)
+        : (legacyIsJimmy ? jimmyHours : otherHours);
 
       return {
         id,
@@ -1183,9 +1188,11 @@
         color: data.color || "#38bdf8",
         totalHours,
         qPercent: data.qPercent ?? data.enabledMonth ?? "",
+        cpValue: cpSortValue(data.qPercent ?? data.enabledMonth ?? ""),
         startDate: data.startDate || todayKey(),
         endDate: data.endDate || defaultEndDate(),
         enabledMonth: data.enabledMonth || "",
+        sourceArea: data.sourceArea || "",
         allocations: data.allocations || {},
         events: data.events || {},
         projectDetail: data.projectDetail || "",
@@ -1366,6 +1373,7 @@
         <div class="project-meta">
           <span>${escapeHtml(displayAssignee(task))}</span>
           <span>${escapeHtml(task.startDate)} ～ ${escapeHtml(task.endDate)}</span>
+          ${task.sourceArea ? `<span>${escapeHtml(task.sourceArea)}</span>` : ""}
           ${task.archived ? `<span class="status-badge">${escapeHtml(task.status || "已封存")}</span>` : ""}
         </div>
         <div class="progress-line" title="總 ${task.totalHours}h / 已配 ${used}h / 剩 ${left}h">
@@ -1376,27 +1384,7 @@
           <span>總 <b>${task.totalHours}h</b></span>
           <span>已配 <b>${used}h</b></span>
           <span class="${left < 0 ? "over" : "left"}">剩 <b>${left}h</b></span>
-          ${formatPercent(task.qPercent) ? `<span class="q-percent">Q ${(() => {
-            const raw = task.qPercent;
-            if (raw === null || raw === undefined || raw === "") return "";
-
-            const str = String(raw).trim();
-
-            if (str.includes("%")) {
-              return str;
-            }
-
-            const n = Number(str);
-
-            if (Number.isFinite(n)) {
-              if (n <= 10) {
-                return `${Math.round(n * 10000) / 100}%`;
-              }
-              return `${Math.round(n * 100) / 100}%`;
-            }
-
-            return str;
-          })()}</span>` : ""}
+          ${formatQPercent(task.qPercent) ? `<span class="q-percent" title="原始CP：${escapeHtml(task.qPercent)}｜排序值：${Math.round(cpSortValue(task.qPercent) * 100) / 100}%">Q ${formatQPercent(task.qPercent)}</span>` : ""}
         </div>
         <div class="actions">
           ${task.archived
@@ -1943,17 +1931,27 @@
 
     function compareTasks(a, b) {
       if (state.sortMode === "cp") {
-        const aq = percentNumber(a.qPercent);
-        const bq = percentNumber(b.qPercent);
-        return bq - aq || a.projectName.localeCompare(b.projectName);
+        const aq = Number.isFinite(a.cpValue) ? a.cpValue : cpSortValue(a.qPercent);
+        const bq = Number.isFinite(b.cpValue) ? b.cpValue : cpSortValue(b.qPercent);
+
+        if (bq !== aq) return bq - aq;
+
+        return a.projectName.localeCompare(b.projectName)
+          || String(a.sourceArea || "").localeCompare(String(b.sourceArea || ""))
+          || String(a.sourceRow || "").localeCompare(String(b.sourceRow || ""))
+          || String(a.id || "").localeCompare(String(b.id || ""));
       }
 
       if (state.sortMode === "workStart") {
         return firstAllocationDate(a).localeCompare(firstAllocationDate(b))
-          || a.projectName.localeCompare(b.projectName);
+          || a.projectName.localeCompare(b.projectName)
+          || String(a.id || "").localeCompare(String(b.id || ""));
       }
 
-      return a.projectName.localeCompare(b.projectName);
+      return a.projectName.localeCompare(b.projectName)
+        || String(a.sourceArea || "").localeCompare(String(b.sourceArea || ""))
+        || String(a.sourceRow || "").localeCompare(String(b.sourceRow || ""))
+        || String(a.id || "").localeCompare(String(b.id || ""));
     }
 
     function firstAllocationDate(task) {
@@ -1961,30 +1959,38 @@
       return dates[0] || "9999-12-31";
     }
 
-    function percentNumber(value) {
-      if (value === null || value === undefined || value === "") return 0;
+    function cpSortValue(value) {
+      if (value === null || value === undefined || value === "") return -Infinity;
 
-      const str = String(value).trim();
-      const cleaned = str.replace(/^Q/i, "").replace("%", "").trim();
+      const original = String(value).trim();
+      const cleaned = original
+        .replace(/^Q\\s*/i, "")
+        .replace(/％/g, "%")
+        .replace(/,/g, "")
+        .replace("%", "")
+        .trim();
+
       const n = Number(cleaned);
+      if (!Number.isFinite(n)) return -Infinity;
 
-      if (!Number.isFinite(n)) return 0;
-
-      // Google Sheet 的百分比欄位常會傳成小數：
-      // 115.72% => 1.1572
-      // 96% => 0.96
-      // 因此只要原始字串沒有 %，且數字 <= 10，就視為比例，排序時轉回百分比。
-      if (!str.includes("%") && n <= 10) {
+      // Google Sheet 的百分比欄位會傳回比例值：
+      // 1175.28% => 11.7528
+      // 105.95%  => 1.0595
+      // 所以只要原始值沒有 %，就乘以 100。
+      if (!original.includes("%")) {
         return n * 100;
       }
 
       return n;
     }
 
-    function formatPercent(value) {
-      if (value === null || value === undefined || value === "") return "";
+    function percentNumber(value) {
+      const n = cpSortValue(value);
+      return Number.isFinite(n) ? n : 0;
+    }
 
-      const n = percentNumber(value);
+    function formatQPercent(value) {
+      const n = cpSortValue(value);
       if (!Number.isFinite(n)) return "";
 
       const fixed = Math.round(n * 100) / 100;
@@ -1993,6 +1999,10 @@
         : String(fixed).replace(/\.?0+$/, "");
 
       return `${text}%`;
+    }
+
+    function formatPercent(value) {
+      return formatQPercent(value);
     }
 
     function openDetailModal(task) {
