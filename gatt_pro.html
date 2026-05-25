@@ -373,6 +373,181 @@
       font-weight: 1000;
     }
 
+
+    .project-title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      justify-content: space-between;
+      margin-bottom: 7px;
+    }
+    .project-title-row .project-title {
+      margin-bottom: 0;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .donut {
+      --pct: 0;
+      --donut-color: #34d399;
+      width: 48px;
+      height: 48px;
+      flex: 0 0 48px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at center, #0b1220 0 55%, transparent 57%),
+        conic-gradient(var(--donut-color) calc(var(--pct) * 1%), rgba(148,163,184,.18) 0);
+      border: 1px solid rgba(148,163,184,.20);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.18);
+    }
+    .donut span {
+      font-size: 11px;
+      font-weight: 1000;
+      color: #e2e8f0;
+      letter-spacing: -.02em;
+    }
+    .timeline-line {
+      margin-top: 10px;
+    }
+    .timeline-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 850;
+      margin-bottom: 5px;
+    }
+    .timeline-track {
+      height: 12px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(2,6,23,.92);
+      border: 1px solid rgba(148,163,184,.20);
+      box-shadow: inset 0 1px 5px rgba(0,0,0,.48);
+      position: relative;
+    }
+    .timeline-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #38bdf8, #6366f1);
+      box-shadow: 0 0 18px rgba(56,189,248,.20);
+      transition: width .25s ease;
+    }
+    .timeline-fill.not-started {
+      width: 0% !important;
+      box-shadow: none;
+      background: rgba(148,163,184,.12);
+    }
+    .timeline-fill.completed {
+      background: linear-gradient(90deg, #22c55e, #14b8a6);
+      box-shadow: 0 0 18px rgba(34,197,94,.24);
+    }
+    .check-progress {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 4px;
+    }
+    .check-segment {
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(148,163,184,.14);
+      border: 1px solid rgba(148,163,184,.10);
+    }
+    .check-segment.done {
+      background: linear-gradient(90deg, #facc15, #22c55e);
+      box-shadow: 0 0 12px rgba(34,197,94,.32);
+      border-color: rgba(134,239,172,.34);
+    }
+    button.check-empty {
+      color: #cbd5e1;
+      background: rgba(100,116,139,.22);
+      box-shadow: inset 0 0 0 1px rgba(148,163,184,.22);
+    }
+    button.check-filled {
+      color: #bbf7d0;
+      background: rgba(34,197,94,.13);
+      box-shadow: inset 0 0 0 1px rgba(74,222,128,.25);
+    }
+
+    .sheet-link-btn {
+      text-decoration: none;
+      border-radius: 12px;
+      padding: 9px 13px;
+      color: #bfdbfe;
+      background: rgba(59,130,246,.14);
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.24);
+      font-weight: 850;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sheet-link-btn:hover {
+      background: rgba(59,130,246,.24);
+    }
+
+    .check-form {
+      width: min(720px, calc(100vw - 28px));
+    }
+    .check-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 64px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(15,23,42,.70);
+      border: 1px solid rgba(148,163,184,.16);
+      color: #e2e8f0;
+      font-weight: 900;
+      cursor: pointer;
+      user-select: none;
+      transition: all .14s ease;
+    }
+    .check-item:hover {
+      border-color: rgba(96,165,250,.36);
+      background: rgba(30,41,59,.86);
+      transform: translateY(-1px);
+    }
+    .check-item input {
+      display: none;
+    }
+    .big-check {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 34px;
+      color: transparent;
+      font-size: 22px;
+      font-weight: 1000;
+      background: rgba(15,23,42,.95);
+      border: 1px solid rgba(148,163,184,.24);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    .check-item input:checked + .big-check {
+      color: #052e16;
+      background: linear-gradient(135deg, #bbf7d0, #22c55e);
+      border-color: rgba(134,239,172,.55);
+      box-shadow: 0 0 22px rgba(34,197,94,.24);
+    }
+    .check-label {
+      line-height: 1.35;
+    }
+    @media (max-width: 720px) {
+      .check-list { grid-template-columns: 1fr; }
+    }
+
     .project-title {
       display: flex;
       align-items: center;
@@ -760,6 +935,170 @@
       font-weight: 1000;
     }
 
+
+    .project-title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      justify-content: space-between;
+      margin-bottom: 7px;
+    }
+    .project-title-row .project-title {
+      margin-bottom: 0;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .donut {
+      --pct: 0;
+      --donut-color: #34d399;
+      width: 48px;
+      height: 48px;
+      flex: 0 0 48px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at center, #0b1220 0 55%, transparent 57%),
+        conic-gradient(var(--donut-color) calc(var(--pct) * 1%), rgba(148,163,184,.18) 0);
+      border: 1px solid rgba(148,163,184,.20);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.18);
+    }
+    .donut span {
+      font-size: 11px;
+      font-weight: 1000;
+      color: #e2e8f0;
+      letter-spacing: -.02em;
+    }
+    .timeline-line {
+      margin-top: 10px;
+    }
+    .timeline-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 850;
+      margin-bottom: 5px;
+    }
+    .timeline-track {
+      height: 12px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(2,6,23,.92);
+      border: 1px solid rgba(148,163,184,.20);
+      box-shadow: inset 0 1px 5px rgba(0,0,0,.48);
+    }
+    .timeline-fill {
+      height: 100%;
+      width: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #38bdf8, #6366f1);
+      box-shadow: 0 0 18px rgba(56,189,248,.20);
+    }
+    .check-progress {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 4px;
+    }
+    .check-segment {
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(148,163,184,.14);
+      border: 1px solid rgba(148,163,184,.10);
+    }
+    .check-segment.done {
+      background: linear-gradient(90deg, #facc15, #22c55e);
+      box-shadow: 0 0 12px rgba(34,197,94,.32);
+      border-color: rgba(134,239,172,.34);
+    }
+    button.check-empty {
+      color: #cbd5e1;
+      background: rgba(100,116,139,.22);
+      box-shadow: inset 0 0 0 1px rgba(148,163,184,.22);
+    }
+    button.check-filled {
+      color: #bbf7d0;
+      background: rgba(34,197,94,.13);
+      box-shadow: inset 0 0 0 1px rgba(74,222,128,.25);
+    }
+
+    .sheet-link-btn {
+      text-decoration: none;
+      border-radius: 12px;
+      padding: 9px 13px;
+      color: #bfdbfe;
+      background: rgba(59,130,246,.14);
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.24);
+      font-weight: 850;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sheet-link-btn:hover {
+      background: rgba(59,130,246,.24);
+    }
+
+    .check-form {
+      width: min(720px, calc(100vw - 28px));
+    }
+    .check-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 64px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(15,23,42,.70);
+      border: 1px solid rgba(148,163,184,.16);
+      color: #e2e8f0;
+      font-weight: 900;
+      cursor: pointer;
+      user-select: none;
+      transition: all .14s ease;
+    }
+    .check-item:hover {
+      border-color: rgba(96,165,250,.36);
+      background: rgba(30,41,59,.86);
+      transform: translateY(-1px);
+    }
+    .check-item input {
+      display: none;
+    }
+    .big-check {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 34px;
+      color: transparent;
+      font-size: 22px;
+      font-weight: 1000;
+      background: rgba(15,23,42,.95);
+      border: 1px solid rgba(148,163,184,.24);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    .check-item input:checked + .big-check {
+      color: #052e16;
+      background: linear-gradient(135deg, #bbf7d0, #22c55e);
+      border-color: rgba(134,239,172,.55);
+      box-shadow: 0 0 22px rgba(34,197,94,.24);
+    }
+    .check-label {
+      line-height: 1.35;
+    }
+    @media (max-width: 720px) {
+      .check-list { grid-template-columns: 1fr; }
+    }
+
     .project-title { font-size: 18px; }
       .legend { max-width: none; }
     }
@@ -944,6 +1283,26 @@
     </form>
   </dialog>
 
+
+  <dialog id="checkDialog" class="check-form">
+    <form id="checkForm" method="dialog">
+      <div class="modal-head">
+        <h3 id="checkModalTitle">工作點檢</h3>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <a class="sheet-link-btn" href="https://docs.google.com/spreadsheets/d/1lJzj9wXjhCj3HmUDYp_A3Recq71E401bike9ztJCdpw/edit?gid=0#gid=0" target="_blank" rel="noopener noreferrer">表格</a>
+          <button id="closeCheckBtn" type="button" class="ghost">關閉</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div id="checkList" class="check-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button id="clearChecksBtn" type="button" class="danger">全部清除</button>
+        <button id="saveChecksBtn" type="button">儲存</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="toast" class="toast"></div>
 
   <script type="module">
@@ -1011,6 +1370,7 @@
       editingEvent: null,
       editingHour: null,
       editingDetailTaskId: null,
+      editingCheckTaskId: null,
       selectedAssignees: new Set(["__ALL__"]),
       sortMode: "name",
       memberColorMap: new Map()
@@ -1047,6 +1407,11 @@
     $("closeDetailBtn").addEventListener("click", () => $("detailDialog").close());
     $("saveDetailBtn").addEventListener("click", saveProjectDetail);
     $("clearDetailBtn").addEventListener("click", clearProjectDetail);
+
+    $("checkForm").addEventListener("submit", (e) => e.preventDefault());
+    $("closeCheckBtn").addEventListener("click", () => $("checkDialog").close());
+    $("saveChecksBtn").addEventListener("click", saveWorkChecks);
+    $("clearChecksBtn").addEventListener("click", clearWorkChecks);
 
     $("eventForm").addEventListener("submit", (e) => e.preventDefault());
     $("closeEventBtn").addEventListener("click", () => $("eventDialog").close());
@@ -1196,6 +1561,7 @@
         allocations: data.allocations || {},
         events: data.events || {},
         projectDetail: data.projectDetail || "",
+        workChecks: normalizeWorkChecks(data.workChecks),
         archived: String(data.status || "").trim() !== "未開發"
       };
     }
@@ -1366,9 +1732,14 @@
       div.className = "project" + (task.archived ? " archived" : "");
       div.dataset.taskId = task.id;
       div.innerHTML = `
-        <div class="project-title">
-          <span class="dot" style="background:${escapeAttr(task.color)}"></span>
-          <span>${escapeHtml(task.projectName)}</span>
+        <div class="project-title-row">
+          <div class="project-title">
+            <span class="dot" style="background:${escapeAttr(task.color)}"></span>
+            <span>${escapeHtml(task.projectName)}</span>
+          </div>
+          <div class="donut" style="--pct:${Math.min(100, Math.max(0, pct))}; --donut-color:${left < 0 ? "#fb7185" : "#34d399"}" title="總 ${task.totalHours}h / 已配 ${used}h / 剩 ${left}h">
+            <span>${pct > 999 ? "999+" : pct}%</span>
+          </div>
         </div>
         <div class="project-meta">
           <span>${escapeHtml(displayAssignee(task))}</span>
@@ -1376,9 +1747,21 @@
           ${task.sourceArea ? `<span>${escapeHtml(task.sourceArea)}</span>` : ""}
           ${task.archived ? `<span class="status-badge">${escapeHtml(task.status || "已封存")}</span>` : ""}
         </div>
-        <div class="progress-line" title="總 ${task.totalHours}h / 已配 ${used}h / 剩 ${left}h">
-          <div class="track"><div class="fill ${left < 0 ? "over" : ""}" style="width:${Math.max(0, pct)}%"></div></div>
-          <div class="pct">${pct > 100 ? `⚠ ${pct}%` : `${pct}%`}</div>
+        <div class="timeline-line" title="開始 ${task.startDate} / 結束 ${task.endDate}">
+          <div class="timeline-meta">
+            <span>${escapeHtml(task.startDate || "-")}</span>
+            <span>${escapeHtml(task.endDate || "-")}</span>
+          </div>
+          <div class="timeline-track">
+            <div
+              class="timeline-fill ${timelinePercent(task) <= 0 ? "not-started" : ""} ${timelinePercent(task) >= 100 ? "completed" : ""}"
+              style="width:${Math.max(0, Math.min(100, timelinePercent(task)))}%"
+              title="時間進度 ${Math.round(timelinePercent(task))}%">
+            </div>
+          </div>
+        </div>
+        <div class="check-progress" title="工作點檢 ${countDoneChecks(task.workChecks)} / 6">
+          ${renderCheckSegments(task.workChecks)}
         </div>
         <div class="hours">
           <span>總 <b>${task.totalHours}h</b></span>
@@ -1391,12 +1774,15 @@
             ? `<span class="readonly-note">已封存，保留配置紀錄但不可編輯</span>`
             : `<button type="button" class="secondary config-btn">配置工時</button>`}
           <button type="button" class="${task.projectDetail ? "detail-filled" : "detail-empty"} detail-btn">專案詳情</button>
+          <button type="button" class="${countDoneChecks(task.workChecks) ? "check-filled" : "check-empty"} check-btn">工作點檢</button>
         </div>
       `;
       const configBtn = div.querySelector(".config-btn");
       if (configBtn) configBtn.addEventListener("click", () => openProjectModal(task));
       const detailBtn = div.querySelector(".detail-btn");
       if (detailBtn) detailBtn.addEventListener("click", () => openDetailModal(task));
+      const checkBtn = div.querySelector(".check-btn");
+      if (checkBtn) checkBtn.addEventListener("click", () => openCheckModal(task));
       return div;
     }
 
@@ -2005,6 +2391,86 @@
       return formatQPercent(value);
     }
 
+    const CHECK_ITEMS = [
+      "工單規格確認",
+      "工程架構書完成",
+      "HTML架設完成",
+      "點檢核對表確認",
+      "內部封測結束",
+      "反修點檢核對確認"
+    ];
+
+    function normalizeWorkChecks(value) {
+      if (Array.isArray(value)) {
+        return CHECK_ITEMS.map((_, i) => Boolean(value[i]));
+      }
+
+      if (value && typeof value === "object") {
+        return CHECK_ITEMS.map((label, i) => Boolean(value[i] || value[String(i)] || value[label]));
+      }
+
+      return CHECK_ITEMS.map(() => false);
+    }
+
+    function countDoneChecks(workChecks) {
+      return normalizeWorkChecks(workChecks).filter(Boolean).length;
+    }
+
+    function renderCheckSegments(workChecks) {
+      const checks = normalizeWorkChecks(workChecks);
+      return checks
+        .map(done => `<span class="check-segment ${done ? "done" : ""}"></span>`)
+        .join("");
+    }
+
+    function openCheckModal(task) {
+      state.editingCheckTaskId = task.id;
+      $("checkModalTitle").textContent = `工作點檢｜${task.projectName}`;
+
+      const checks = normalizeWorkChecks(task.workChecks);
+      const list = $("checkList");
+      list.innerHTML = CHECK_ITEMS.map((label, i) => `
+        <label class="check-item">
+          <input type="checkbox" data-index="${i}" ${checks[i] ? "checked" : ""}>
+          <span class="big-check">✓</span>
+          <span class="check-label">${escapeHtml(label)}</span>
+        </label>
+      `).join("");
+
+      $("checkDialog").showModal();
+    }
+
+    async function saveWorkChecks() {
+      const task = state.tasks.find(t => t.id === state.editingCheckTaskId);
+      if (!task) return;
+
+      const workChecks = CHECK_ITEMS.map((_, i) => {
+        const input = $("checkList").querySelector(`input[data-index="${i}"]`);
+        return Boolean(input?.checked);
+      });
+
+      try {
+        await updateDoc(doc(db, "ganttTasks", task.id), {
+          workChecks,
+          workChecksUpdatedBy: state.user.email,
+          workChecksUpdatedAt: serverTimestamp()
+        });
+
+        task.workChecks = workChecks;
+        $("checkDialog").close();
+        render();
+        toast("工作點檢已儲存");
+      } catch (err) {
+        console.error(err);
+        toast("工作點檢儲存失敗：" + err.message);
+      }
+    }
+
+    async function clearWorkChecks() {
+      $("checkList").querySelectorAll("input[type='checkbox']").forEach(input => input.checked = false);
+      await saveWorkChecks();
+    }
+
     function openDetailModal(task) {
       state.editingDetailTaskId = task.id;
       $("detailModalTitle").textContent = `專案詳情｜${task.projectName}`;
@@ -2037,6 +2503,32 @@
     async function clearProjectDetail() {
       $("projectDetailInput").value = "";
       await saveProjectDetail();
+    }
+
+    function timelinePercent(task) {
+      const start = parseDate(task.startDate);
+      const end = parseDate(task.endDate);
+      const now = new Date();
+
+      if (!(start instanceof Date) || Number.isNaN(start.getTime())) return 0;
+      if (!(end instanceof Date) || Number.isNaN(end.getTime())) return 0;
+
+      // 尚未開始
+      if (now < start) {
+        return 0;
+      }
+
+      // 已完成
+      if (now >= end) {
+        return 100;
+      }
+
+      const total = end.getTime() - start.getTime();
+      if (total <= 0) return 100;
+
+      const elapsed = now.getTime() - start.getTime();
+
+      return (elapsed / total) * 100;
     }
 
     function shiftMonth(delta) {
