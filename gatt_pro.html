@@ -1346,6 +1346,15 @@
       "#fb7185", "#22d3ee", "#818cf8", "#4ade80", "#f97316"
     ];
 
+    // 組員登入帳號與試算表 / Firestore assigneeName 的對應。
+    // 組員登入後會用自己的 Google email 找到對應名稱，再只讀取該名稱被指派的專案。
+    const MEMBER_EMAIL_MAP = {
+      "Tse": "tse.cheng@shopee.com",
+      "Ken": "ken.cheng@shopee.com",
+      "Jamie": "jamie.h@shopee.com",
+      "Iona": "iona.li@shopee.com"
+    };
+
     const app = initializeApp(firebaseConfig);
     isSupported().then(ok => ok && getAnalytics(app)).catch(() => {});
     const auth = getAuth(app);
@@ -1511,13 +1520,33 @@
       });
     }
 
+    function getAssigneeNameByEmail(email) {
+      const normalizedEmail = String(email || "").trim().toLowerCase();
+      return Object.entries(MEMBER_EMAIL_MAP).find(([, memberEmail]) => {
+        return String(memberEmail || "").trim().toLowerCase() === normalizedEmail;
+      })?.[0] || "";
+    }
+
     function subscribeTasks() {
       if (!state.user) return;
       if (state.unsubTasks) state.unsubTasks();
 
+      const currentAssigneeName = getAssigneeNameByEmail(state.user.email);
+
+      if (!state.isAdmin && !currentAssigneeName) {
+        state.tasks = [];
+        buildMemberColors();
+        reconcileFilters();
+        renderFilters();
+        renderLegend();
+        render();
+        toast(`此登入帳號尚未設定成員對應：${state.user.email}`);
+        return;
+      }
+
       const q = state.isAdmin
         ? query(collection(db, "ganttTasks"))
-        : query(collection(db, "ganttTasks"), where("assigneeEmail", "==", state.user.email));
+        : query(collection(db, "ganttTasks"), where("assigneeName", "==", currentAssigneeName));
 
       state.unsubTasks = onSnapshot(q, (snap) => {
         state.tasks = snap.docs.map(d => normalizeTask(d.id, d.data()));
